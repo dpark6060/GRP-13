@@ -91,9 +91,9 @@ def return_diff_files(original_dir, modified_dir):
 def deidentify_dicoms_inplace(profile_path, input_directory):
     """
     Given profile_path to a valid flywheel de-id profile with a "dicom" namespace, this function
-    writes de-identified copies of DICOM files within the input_directory to the output_directory.
+    replaces original files with de-identified copies of DICOM files .
     Returns a list of paths to the deidentified files. If no changes were imposed by the profile,
-    no files will be saved to the output directory
+    no files will be modified
     :param profile_path: path to the de-id profile to apply
     :param input_directory: directory containing the dicoms to be de-identified
     :return: deidentified_file_list, list of paths to deidentified files or None if no files are de-identified
