@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import tempfile
+import zipfile
 
 
 import yaml
@@ -22,6 +23,46 @@ def make_temp_directory():
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir)
+
+
+def recreate_zip(dest_zip, file_directory, output_directory=None):
+    """
+    Given a dest_zip and file_directory that contains extracted(modified) files from dest_zip,
+    this function will replace dest_zip with a zip that contains files from file_directory that
+    match the original zip's filename. If output_directory is provided, the resulting zip will be saved to
+    output_directory rather than overwriting dest_zip.
+    :param dest_zip: path to the zip archive to be modified
+    :param file_directory: path to the directory that contains files to replace those in dest_zip
+    :param output_directory: directory to which to save output zip, if None, will overwrite dest_zip
+    :return: output_path, a path to the resultant zip
+    """
+    # temporary directory context
+    with make_temp_directory() as temp_dir:
+        # temporary file context
+        _, tmp_zip_path = tempfile.mkstemp(dir=temp_dir)
+        # read zip context
+        with zipfile.ZipFile(dest_zip, 'r') as zin:
+            # write zip context
+            with zipfile.ZipFile(tmp_zip_path, 'w') as zout:
+                # preserve the archive comment
+                zout.comment = zin.comment
+                for zip_item in zin.infolist():
+                    file_path = os.path.join(file_directory,zip_item.filename)
+                    # If the file exists, in file_directory, add that, otherwise, add from dest_zip
+                    if os.path.exists(file_path):
+                        zout.write(file_path, zip_item.filename)
+                    else:
+                        log.warning(f'Extracted file {file_path} does not exist! Copying from original archive.')
+                        zout.writestr(zip_item.filename, zin.read(zip_item.filename))
+
+        if output_directory:
+            output_path = os.path.join(output_directory, os.path.basename(dest_zip))
+        else:
+            output_path = dest_zip
+            # replace dest_zip with the tmp_zip_path
+            os.remove(dest_zip)
+        os.rename(tmp_zip_path, output_path)
+        return output_path
 
 
 def parse_deid_template(template_filepath):
