@@ -2,7 +2,7 @@
 	"name": "grp-13_deid_file",
 	"label": "GRP 13: De-identify/Anonymize File Utility",
 	"description": "A utility gear for anonymizing files according to a de-identification template",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"inputs": {
 		"api-key": {
 			"base": "api-key",
@@ -61,7 +61,7 @@
 	"custom": {
 		"gear-builder": {
 			"category": "converter",
-			"image": "grp-13_deid_file:0.0.0"
+			"image": "grp-13_deid_file:0.0.1"
 		}
 	}
 }
