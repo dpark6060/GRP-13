@@ -5,10 +5,12 @@ import os
 import re
 import shutil
 
+import requests
 import flywheel
 import deid_file
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
+
 
 def ensure_filename_safety(filename):
     """
@@ -94,11 +96,12 @@ if __name__ == '__main__':
                 if os.path.exists(deid_filepath):
                     log.info(f'Successfully processed {deid_filepath}')
         except Exception as e:
-            log.error(f'An exception occurred when attempting to de-identify {e.with_traceback()}')
+            log.error(f'An exception occurred when attempting to de-identify {e}')
             exit_status = 1
         finally:
-
-            append_to_destination_origin_list(gear_context)
+            origin = gear_context.config.get('origin')
+            if origin:
+                gear_context.update_destination_metadata({'info': {'deid_origin': origin}})
 
     log.info(f'Exit status is {exit_status}')
     os.sys.exit(exit_status)
