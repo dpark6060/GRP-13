@@ -1,0 +1,14 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+flywheel-sdk = "~=9.0.2"
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "2a56058ebbc40c1e2a2dd24b0116f06eb8f5036d"}
+pyaml = "*"
+
+[requires]
+python_version = "3.8"

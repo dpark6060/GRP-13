@@ -1,3 +1,4 @@
+import argparse
 import contextlib
 import filecmp
 import fs
@@ -11,9 +12,11 @@ import zipfile
 
 
 import yaml
+
+from flywheel_migration import deidentify
 from flywheel_migration.deidentify.deid_profile import DeIdProfile
 
-log = logging.getLogger('deidentify_dicom')
+log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -23,6 +26,23 @@ def make_temp_directory():
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir)
+
+
+def extract_files(zip_path, output_directory):
+    """
+    extracts the files in a zip to an output directory
+    :param zip_path: path to the zip to extract
+    :param output_directory: directory to which to extract the files
+    :return: file_list, a list to the paths of the extracted files and comment, the archive comment
+    """
+    with zipfile.ZipFile(zip_path, 'r') as zipf:
+        zipf.extractall(output_directory)
+        file_list = zipf.namelist()
+        # Get full paths and remove directories from list
+        file_list = [os.path.join(output_directory, file) for file in file_list if not file.endswith('/')]
+        real_files = [fp for fp in file_list if os.path.isfile(fp)]
+        assert file_list == real_files
+    return file_list
 
 
 def recreate_zip(dest_zip, file_directory, output_directory=None):
@@ -129,7 +149,8 @@ def return_diff_files(original_dir, modified_dir):
     return diff_files
 
 
-def deidentify_dicoms_inplace(profile_path, input_directory):
+def deidentify_files(profile_path, input_directory, profile_name='dicom', file_list=None,
+                     output_directory=None, date_increment=None):
     """
     Given profile_path to a valid flywheel de-id profile with a "dicom" namespace, this function
     replaces original files with de-identified copies of DICOM files .
@@ -137,46 +158,116 @@ def deidentify_dicoms_inplace(profile_path, input_directory):
     no files will be modified
     :param profile_path: path to the de-id profile to apply
     :param input_directory: directory containing the dicoms to be de-identified
-    :return: deidentified_file_list, list of paths to deidentified files or None if no files are de-identified
+    :param profile_name: name of the profile to pass .get_file_profile()
+    :param output_directory: directory to which to save de-identified files. If not provided, originals will be replaced
+    :param date_increment: date offset to apply to the profile
+    :param file_list: optional list of relative paths of files to process, if not provided,
+    will work on all files in the input_directory
+    :return: deid_paths, list of paths to deidentified files or None if no files are de-identified
     :rtype: list
     """
     with make_temp_directory() as tmp_deid_dir:
+        # Load the de-id profile from a file
+        deid_profile = deidentify.load_profile(profile_path)
+        if date_increment:
+            deid_profile.date_increment = date_increment
 
         # OSFS setup
         src_fs = osfs.OSFS(input_directory)
         dst_fs = osfs.OSFS(tmp_deid_dir)
 
-        # Get list of files (dicom files do not always have an extension in the wild)
-        file_list = [match.path for match in src_fs.glob('**/*', case_sensitive=False) if not match.info.is_dir]
+        if not output_directory:
+            output_directory = input_directory
+
+        if not file_list:
+            # Get list of files (dicom files do not always have an extension in the wild)
+            file_list = [match.path for match in src_fs.glob('**/*', case_sensitive=False) if not match.info.is_dir]
 
         # Monkey-patch get_dest_path to return the original path
         # This necessitates creating any missing subdirectories
         def default_path(state, record, path):
             dst_fs.makedirs(fs.path.dirname(path), recreate=True)
             return path
-
+        
         # Get the dicom profile from the de-id profile
-        dcm_profile = load_dicom_deid_profile(profile_path)
-        dcm_profile.get_dest_path = default_path
-        dcm_profile.process_files(src_fs, dst_fs, file_list)
+        file_profile = deid_profile.get_file_profile(profile_name)
+        file_profile.get_dest_path = default_path
+        file_profile.process_files(src_fs, dst_fs, file_list)
 
         # get list of modified files in tmp_deid_dir
-        diff_files = return_diff_files(input_directory, tmp_deid_dir)
         deid_files = [match.path for match in dst_fs.glob('**/*', case_sensitive=False) if not match.info.is_dir]
         deid_paths = list()
         for deid_file in deid_files:
-            deid_path = os.path.join(input_directory, deid_file.lstrip(os.path.sep))
+            deid_file = deid_file.lstrip(os.path.sep)
+            # Create list of de-identified files
+            deid_path = os.path.join(output_directory, deid_file)
             deid_paths.append(deid_path)
-        if diff_files:
-            deidentified_file_list = list()
-            log.info(f'Saving {len(diff_files)} deidentified files')
-            for diff_file in diff_files:
-                tmp_filepath = os.path.join(tmp_deid_dir, diff_file)
-                replace_filepath = os.path.join(input_directory, diff_file)
-                shutil.move(tmp_filepath, replace_filepath)
-                deidentified_file_list.append(replace_filepath)
-        else:
-            log.info(f'DICOMS already conform to {profile_path}. No files will be deidentified')
-            deidentified_file_list = None
-    return deidentified_file_list
 
+            tmp_filepath = os.path.join(tmp_deid_dir, deid_file)
+            replace_filepath = os.path.join(output_directory, deid_file)
+            shutil.move(tmp_filepath, replace_filepath)
+
+        if not deid_paths:
+            return None
+
+    return deid_paths
+
+
+def deid_archive(zip_path, profile_path, output_directory=None, date_increment=None):
+    with make_temp_directory() as temp_dir:
+        file_list = extract_files(zip_path=zip_path, output_directory=temp_dir)
+        deid_file_list = deidentify_files(
+            input_directory=temp_dir, 
+            profile_path=profile_path,
+            date_increment=date_increment
+        )
+        output_zip_path = recreate_zip(dest_zip=zip_path, file_directory=temp_dir, output_directory=output_directory)
+    return output_zip_path
+
+
+def deidentify_path(input_file_path, profile_path, output_directory=None, date_increment=None):
+    if output_directory and not os.path.exists(output_directory):
+        log.info(f'{output_directory} does not exist, creating...')
+        os.makedirs(output_directory)
+    if zipfile.is_zipfile(input_file_path):
+        log.info(f'Applying profile {os.path.basename(profile_path)} to archive {input_file_path}')
+        deid_archive(zip_path=input_file_path, profile_path=profile_path, output_directory=output_directory)
+    elif os.path.isfile(input_file_path):
+        log.info(f'Applying profile {os.path.basename(profile_path)} to file {input_file_path}')
+        deid_file_list = deidentify_files(
+            input_directory=os.path.dirname(input_file_path),
+            profile_path=profile_path,
+            file_list=[os.path.basename(input_file_path)],
+            output_directory=output_directory,
+            date_increment=date_increment
+        )
+        return deid_file_list[0]
+    elif os.path.isdir(input_file_path) and os.listdir(input_file_path):
+        log.info(f'Applying profile {os.path.basename(profile_path)} to directory {input_file_path}')
+        deid_file_list = deidentify_files(
+            input_directory=input_file_path,
+            profile_path=profile_path,
+            output_directory=output_directory, 
+            date_increment=date_increment
+        )
+        return deid_file_list
+        
+    else:
+        log.error(f'{input_file_path} is not a file or a directory. No files will be de-identified.')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file_path', help='path to the file to de-identify')
+    parser.add_argument('deid_profile', help='de-identification profile to apply')
+    parser.add_argument('--output_directory', help='path to which to save de-identified files')
+    parser.add_argument('--date_increment', help='days to offset template fields where specified')
+
+    args = parser.parse_args()
+
+    deidentify_path(
+        input_file_path=args.input_file_path,
+        profile_path=args.deid_profile,
+        output_directory=args.output_directory,
+        date_increment=args.date_increment
+    )
