@@ -67,7 +67,7 @@ def recreate_zip(dest_zip, file_directory, output_directory=None):
                 # preserve the archive comment
                 zout.comment = zin.comment
                 for zip_item in zin.infolist():
-                    file_path = os.path.join(file_directory,zip_item.filename)
+                    file_path = os.path.join(file_directory, zip_item.filename)
                     # If the file exists, in file_directory, add that, otherwise, add from dest_zip
                     if os.path.exists(file_path):
                         zout.write(file_path, zip_item.filename)
@@ -81,7 +81,8 @@ def recreate_zip(dest_zip, file_directory, output_directory=None):
             output_path = dest_zip
             # replace dest_zip with the tmp_zip_path
             os.remove(dest_zip)
-        os.rename(tmp_zip_path, output_path)
+
+        shutil.move(tmp_zip_path, output_path)
         return output_path
 
 
@@ -231,7 +232,12 @@ def deidentify_path(input_file_path, profile_path, output_directory=None, date_i
         os.makedirs(output_directory)
     if zipfile.is_zipfile(input_file_path):
         log.info(f'Applying profile {os.path.basename(profile_path)} to archive {input_file_path}')
-        deid_archive(zip_path=input_file_path, profile_path=profile_path, output_directory=output_directory)
+        deid_outpath = deid_archive(
+            zip_path=input_file_path,
+            profile_path=profile_path,
+            output_directory=output_directory
+        )
+        return deid_outpath
     elif os.path.isfile(input_file_path):
         log.info(f'Applying profile {os.path.basename(profile_path)} to file {input_file_path}')
         deid_file_list = deidentify_files(

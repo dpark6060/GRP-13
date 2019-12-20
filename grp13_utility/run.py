@@ -36,6 +36,8 @@ def append_to_destination_origin_list(gear_context):
         if isinstance(current_deid_origin_list, list):
             new_origin_list = current_deid_origin_list.extend(new_origin_list)
         gear_context.update_destination_metadata({'info': {'deid_origin': new_origin_list}})
+        gear_context.write_metadata()
+    return None
 
 
 def main(gear_context):
@@ -88,15 +90,15 @@ if __name__ == '__main__':
 
         try:
             deid_filepath, exit_status = main(gear_context)
+            if deid_filepath:
+                if os.path.exists(deid_filepath):
+                    log.info(f'Successfully processed {deid_filepath}')
         except Exception as e:
-            log.error(f'An exception occurred when attempting to de-identify {e}')
+            log.error(f'An exception occurred when attempting to de-identify {e.with_traceback()}')
             exit_status = 1
         finally:
 
             append_to_destination_origin_list(gear_context)
-
-    if os.path.exists(deid_filepath):
-        log.info(f'Successfully processed {deid_filepath}')
 
     log.info(f'Exit status is {exit_status}')
     os.sys.exit(exit_status)
