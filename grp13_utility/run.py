@@ -59,9 +59,6 @@ def write_deid_file_metadata(gear_context, input_key, output_file):
     original_metadata = gear_context.get_input(input_key).get('object')
 
     output_metadata = dict()
-    origin = gear_context.config.get('origin')
-    if origin:
-        output_metadata['info'] = {'origin_id': origin}
     if original_metadata.get('type'):
         output_metadata['type'] = original_metadata.get('type')
     if zipfile.is_zipfile(output_file):
@@ -81,6 +78,7 @@ def main(gear_context):
     if dest_id == 'aex':
         dest_id = '5dc9e6d7bd690a002adaa1f4'
     output_filename = gear_context.config.get('output_filename')
+    overwrite = gear_context.config.get('force_overwrite')
     fw = gear_context.client
 
     # Make the output_filename safe
@@ -95,9 +93,15 @@ def main(gear_context):
 
     # Exit if destination contains a file with the same name (prevent inadvertent overwrite)
     if output_filename in [file.name for file in fw.get(dest_id).files]:
-        error_msg = f'A file named {output_filename} is already in {dest_id}!'
-        log.error(error_msg)
-        return None, error_msg
+        if not overwrite:
+            error_msg = f'A file named {output_filename} is already in {dest_id}! No files will be de-identified.'
+            log.error(error_msg)
+            return None, error_msg
+        else:
+            log.info(
+                f'A file named {output_filename} is already in {dest_id}. This file will be overwritten if no'
+                ' exceptions are encountered.'
+            )
 
     file_path = gear_context.get_input_path('input_file')
 
@@ -125,7 +129,6 @@ if __name__ == '__main__':
     log = create_gear_logger('INFO', 'grp-13-deid-file')
     with flywheel.GearContext() as gear_context:
         exit_status = None
-        tb = None
         try:
             deid_filepath, error_msg = main(gear_context)
             if deid_filepath:
@@ -139,16 +142,6 @@ if __name__ == '__main__':
             error_msg = f'An exception occurred when attempting to de-identify:\n {type(e).__name__}: {e}\n'
             log.error(error_msg, exc_info=True)
             exit_status = 1
-            tb = e.__traceback__
-
-        finally:
-            origin = gear_context.config.get('origin')
-            if origin and (exit_status != 0):
-                error_file_name = f'{origin}_error.txt'
-                with gear_context.open_output(error_file_name, 'w') as error_file:
-                    error_file.write(error_msg)
-                    if tb:
-                        traceback.print_tb(tb, file=error_file)
 
     log.info(f'Exit status is {exit_status}')
     log.info(f'Exit time::{datetime.datetime.now(datetime.timezone.utc)}')

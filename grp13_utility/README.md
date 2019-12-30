@@ -49,10 +49,19 @@ string match the regex `[^A-Za-z0-9\-\_\.]+` (characters that are
 not alphanumeric, '.', '-', or '_'), they will be removed. If no valid 
 characters are provided, the gear will exit with a "Failed" status.
 
-### origin (optional)
-origin is an optional string that will be added to 
-`<parent container>.info.deid_origin`. This option is primarily for use 
-by an export orchestration analysis gear
+### force_overwrite (optional)
+force_overwrite is a boolean configuration option
+
+If the destination container already contains a file with 
+`output_filename`:
+
+* `true` will allow the gear job  to upload the file output and 
+replace the current file in the destination container if the job
+completes successfully.
+
+
+* `false` (default)will exit with a failure status without 
+de-identifying+exporting the file
 
 ### Manifest JSON for configuration options
 ``` json
@@ -62,11 +71,10 @@ by an export orchestration analysis gear
         "description": "The name to use for the output file (including extension). Cannot match the name of any file in gear destination container",
         "type": "string"
     },
-    "origin": {
-        "default": "",
-        "description": "For SDK usages, please disregard",
-        "type": "string"
+    "force_overwrite": {
+        "default": false,
+        "description": "If true, a pre-existing file with name output_filename will be overwritten",
+        "type": "boolean"
     }
-
 }
 ```

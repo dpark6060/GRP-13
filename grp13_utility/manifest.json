@@ -35,10 +35,10 @@
 			"description": "The name to use for the output file (including extension). Cannot match the name of any file in gear destination container",
 			"type": "string"
 		},
-		"origin": {
-			"default": "",
-			"description": "For SDK usages, please disregard",
-			"type": "string"
+		"force_overwrite": {
+			"default": false,
+			"description": "If true, a pre-existing file with name output_filename will be overwritten",
+			"type": "boolean"
 		}
 	},
 	"environment": {

@@ -7,8 +7,9 @@ verify_ssl = true
 
 [packages]
 flywheel-sdk = "~=9.0.2"
-flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "abbfe2fe407f14cc8501901167a330f8d88e7d63"}
 pyaml = "*"
+requests = "*"
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "abbfe2fe407f14cc8501901167a330f8d88e7d63"}
 
 [requires]
 python_version = "3.8"

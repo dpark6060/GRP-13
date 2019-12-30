@@ -1,11 +1,24 @@
+import contextlib
 import datetime
 import logging
+import os
 import re
+import shutil
+import tempfile
 
 import flywheel
 
 from .utils.retry import retry
-from ..grp13_utility.deid_file import deidentify_path
+from .utils.deid_file import deidentify_path
+
+
+@contextlib.contextmanager
+def make_temp_directory():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir)
 
 
 def search_job_log_str(regex_string, job_log_str):
@@ -88,7 +101,7 @@ def get_job_state_from_logs(job_log_obj,
 
 class DeidUtilityJob:
 
-    def __init__(self, job_id=None, ):
+    def __init__(self, job_id=None):
         self.id = None
         self.detail = None
         self.job_logs = None
@@ -108,7 +121,7 @@ class DeidUtilityJob:
         self.forbidden = False
 
     @retry(max_retry=3)
-    def refresh(self, fw_client, force=False):
+    def reload(self, fw_client, force=False):
         self.job_logs = fw_client.get_job_logs(self.id)
 
         # It's possible for a non-admin to lose the ability to check detail if sessions are moved
@@ -151,49 +164,143 @@ class DeidUtilityJob:
 
 class FileExporter:
     """A class for representing the export status of a file"""
-    def __init__(self, origin_parent, origin, dest_parent, filename=None):
+    @retry(max_retry=2)
+    def __init__(self, fw_client, origin_parent, origin_filename, dest_parent, filename=None, overwrite=False):
+        self.fw_client = fw_client
         self.origin_parent = origin_parent
-        self.origin = origin
         self.dest_parent = dest_parent
-        self.filename = filename
-        if not self.filename:
-            self.filename = origin.name
-        self.dest = None
+        self.origin_filename = origin_filename
+        self.log = logging.getLogger(f'{self.origin_parent.id}_{self.origin_filename}_exporter')
         self.state = 'initialized'
+        self.overwrite = overwrite
+        self.filename = filename
         self.deid_job = DeidUtilityJob()
         self.errors = list()
-        self.log = logging.getLogger(f'{self.origin.id}_exporter')
+        # If a filename was not provided, default to the origin filename
+        if not self.filename:
+            self.filename = origin_filename
 
-    @retry
+        self.origin = origin_parent.get_file(origin_filename)
+        if not self.origin:
+            self.error_handler(
+                f'{self.origin_filename} does not exist in {self.origin_parent.container_type} {self.origin_parent.id}'
+            )
+        self.dest = origin_parent.get_file(filename)
+        if self.dest and not self.overwrite:
+            self.state = 'exported'
+
+    def error_handler(self, log_str):
+        self.state = 'error'
+        self.log.error(log_str)
+        self.errors.append(log_str)
+
+    @retry(max_retry=2)
     def reload_fw_object(self, fw_object):
         fw_object = fw_object.reload()
         return fw_object
 
+    @retry(max_retry=2)
     def reload(self):
-        if not self.dest and self.state != 'error':
+        if self.state != 'error':
             try:
                 self.reload_fw_object(self.origin_parent)
                 self.reload_fw_object(self.dest_parent)
                 self.dest = self.dest_parent.get_file(self.filename)
+                if self.dest and not self.overwrite:
+                    self.state = 'exported'
+                self.deid_job = self.deid_job.reload(self.fw_client)
+                if self.state == 'pending':
+                    if self.deid_job.state == 'cancelled':
+                        self.state = 'cancelled'
+                    elif self.deid_job.state in ['failed', 'failed_or_cancelled']:
+                        log_str = (
+                            f'De-id job failed. Please refer to the logs for job {self.deid_job.id} for '
+                            f'{self.dest_parent.container_type} {self.dest_parent.id} '
+                            'for additional details'
+                        )
+                        self.error_handler(log_str)
+                    else:
+                        pass
 
             except Exception as e:
-                self.state = 'error'
-                self.errors.append(f'{e}')
 
-    def submit_deid_job(self, fw_client, gear_path, template_file_obj):
-        job_dict = dict()
-        job_dict['config'] = {'origin': self.origin.id, 'output_filename': self.filename}
-        job_dict['inputs'] = {'input_file': self.origin, 'deid_profile': template_file_obj}
-        job_dict['destination'] = self.dest_parent
-        self.deid_job.submit_job(fw_client=fw_client, gear_path=gear_path, **job_dict)
+                log_str = f'An exception occurred while reloading {self.origin.id} ({self.filename}): {e}'
+                self.error_handler(log_str)
 
-    def cancel_deid_job(self, fw_client):
+    def submit_deid_job(self, gear_path, template_file_obj):
+
+        self.reload()
+        if self.dest and not self.overwrite:
+            log_str = (
+                f'{self.filename} already exists in {self.dest_parent.container_type} {self.dest_parent.id}'
+                f'{self.origin_filename} cannot be exported as {self.filename}'
+            )
+            self.error_handler(log_str)
+
+        if self.deid_job.id:
+            self.log.warning(
+                f'Job already exists for {self.filename} ({self.deid_job.id}). A new one will not be queued'
+            )
+            return self.deid_job.id
+
+        if self.state != 'error':
+
+            job_dict = dict()
+            job_dict['config'] = {'origin': self.origin.id, 'output_filename': self.filename}
+            job_dict['inputs'] = {'input_file': self.origin, 'deid_profile': template_file_obj}
+            job_dict['destination'] = self.dest_parent
+            try:
+                self.deid_job.submit_job(fw_client=self.fw_client, gear_path=gear_path, **job_dict)
+            except Exception as e:
+                log_str = (
+                    f'An exception was raised while attempting to submit a job for {self.filename}: {e}'
+                )
+                self.error_handler(log_str)
+            self.state = 'pending'
+            return self.deid_job.id
+
+    def cancel_deid_job(self):
         if not self.deid_job.id:
             self.log.debug('Cannot cancel a job that does not exist...')
             return None
         else:
-            self.deid_job.cancel(fw_client)
-            self.state = self.deid_job.state
+            self.deid_job.cancel(self.fw_client)
+            self.state = 'cancelled'
 
-    def local_deid_export(self):
-        pass
+    def local_deid_export(self, template_path):
+        self.reload()
+        if self.dest and not self.overwrite:
+            log_str = (
+                f'{self.filename} already exists in {self.dest_parent.container_type} {self.dest_parent.id} '
+                f'{self.origin_filename} cannot be exported as {self.filename}'
+            )
+            self.error_handler(log_str)
+            return None
+        if not os.path.exists(template_path):
+            self.error_handler(
+                f'De-id path {template_path} does not exist. {self.filename} will not be exported to '
+                f'{self.dest_parent.id}'
+            )
+            return None
+        try:
+            with make_temp_directory() as temp_dir:
+                # Download the file
+                local_file_path = os.path.join(temp_dir, self.filename)
+                self.origin.download(local_file_path)
+
+                # De-identify
+                deid_path = deidentify_path(input_file_path=local_file_path, profile_path=template_path)
+                self.dest_parent.upload_file(deid_path)
+
+                self.state = 'exported'
+                self.reload()
+
+        except Exception as e:
+            self.error_handler(
+                f'An exception occured while attempting to de-identify {self.origin_filename} '
+                f'{self.filename} will not be exported to {self.dest_parent.id} exception:\n{e}'
+            )
+            return None
+
+
+
