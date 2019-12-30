@@ -6,10 +6,11 @@ WORKDIR ${FLYWHEEL}
 
 # Pipenv
 COPY Pipfile* ${FLYWHEEL}
-COPY run.py ${FLYWHEEL}
-COPY deid_file.py ${FLYWHEEL}
 
 RUN apt-get update && apt-get -y install git
 
 RUN pip install pipenv==2018.11.26
 RUN pipenv install --deploy --ignore-pipfile
+
+COPY run.py ${FLYWHEEL}
+COPY deid_file.py ${FLYWHEEL}
