@@ -1,5 +1,9 @@
 # GRP-13 File Anonymization/De-identification
-DICOM Anonymization/De-identification 
+This gear will perform Anonymization/De-identification on DICOM files
+identically to the Flywheel CLI. Currently, a requirement for DICOM 
+metadata generation is that the destination project has a gear rule 
+configured for GRP-3, as the gear itself does not propagate/modify 
+DICOM metadata
 
 ## INPUTS
 ### input_file (required)
