@@ -208,8 +208,7 @@ class FileExporter:
                 self.reload_fw_object(self.origin_parent)
                 self.reload_fw_object(self.dest_parent)
                 self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and not self.overwrite and self.state not in ['exists_at_destination',
-                                                                           'overwrite_exported']:
+                if self.dest and self.state not in ['exists_at_destination', 'overwrite_exported']:
                     self.state = 'exported'
                 if self.deid_job.id:
                     self.deid_job = self.deid_job.reload(self.fw_client)
