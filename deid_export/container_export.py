@@ -71,7 +71,7 @@ def quote_numeric_string(input_str):
         output_str = input_str
     return output_str
 
-
+# TODO: allow an ALL option to be passed
 def create_metadata_dict(origin_container, container_config=None):
     # Ensure our container is up-to-date
     origin_container = origin_container.reload()
@@ -185,7 +185,12 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
     return dest_acquisition
 
 
-def initialize_container_file_export(fw_client, origin_container, dest_container, filename_dict, filetype_list):
+def initialize_container_file_export(fw_client,
+                                     origin_container,
+                                     dest_container,
+                                     filename_dict,
+                                     filetype_list,
+                                     overwrite=False):
     file_exporter_list = list()
     for container_file in origin_container.files:
         export_filename = filename_dict.get(container_file.name, None)
@@ -197,7 +202,8 @@ def initialize_container_file_export(fw_client, origin_container, dest_container
                 origin_parent=origin_container,
                 origin_filename=container_file.name,
                 dest_parent=dest_container,
-                filename=export_filename
+                filename=export_filename,
+                overwrite=overwrite
             )
             file_exporter_list.append(tmp_file_exporter)
     return file_exporter_list
@@ -214,8 +220,7 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
         overwrite=overwrite
     )
     if file_exporter.state != 'error':
-        if file_exporter.state != 'exported' or overwrite:
-            file_exporter.local_deid_export(template_path=template_path)
+        file_exporter.local_deid_export(template_path=template_path)
     status_dict = file_exporter.get_status_dict()
     del file_exporter
 
@@ -346,12 +351,11 @@ class SessionExporter:
 
         file_list = [file_exporter.get_status_dict() for file_exporter in self.files]
 
-
         api_key = get_api_key_from_client(self.client)
         dict_list = joblib.Parallel(n_jobs=-2)(joblib.delayed(local_file_export)(
             api_key=api_key,
             file_exporter_dict=file_exporter,
-            template_path=template_path) for file_exporter in file_list)
+            template_path=template_path, overwrite=overwrite) for file_exporter in file_list)
         export_df = pd.DataFrame(dict_list)
 
         del dict_list
@@ -364,7 +368,6 @@ class SessionExporter:
             status_df = pd.DataFrame([file_exporter.get_status_dict() for file_exporter in self.files])
             return status_df
 
-#TODO: Propegate overwrite to the exporter
 #TODO: Allow files to be exported without template
 def export_session(
         fw_client,
@@ -425,7 +428,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                 template_path=template_path,
                 subject_files=subject_files,
                 project_files=project_files,
-                overwrite=False
+                overwrite=overwrite
             )
             # We only need to copy subject/project files once
             if first_session:
@@ -447,7 +450,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             subject_files=False,
             project_files=False,
             csv_output_path=None,
-            overwrite=False)
+            overwrite=overwrite)
 
         if isinstance(session_df, pd.DataFrame):
             if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):

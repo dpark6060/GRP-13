@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+
 import tempfile
 
 import flywheel
@@ -188,7 +189,7 @@ class FileExporter:
             )
         self.dest = self.dest_parent.get_file(filename)
         if self.dest and not self.overwrite:
-            self.state = 'exported'
+            self.state = 'exists_at_destination'
 
     def error_handler(self, log_str):
         self.state = 'error'
@@ -207,7 +208,8 @@ class FileExporter:
                 self.reload_fw_object(self.origin_parent)
                 self.reload_fw_object(self.dest_parent)
                 self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and not self.overwrite:
+                if self.dest and not self.overwrite and self.state not in ['exists_at_destination',
+                                                                           'overwrite_exported']:
                     self.state = 'exported'
                 if self.deid_job.id:
                     self.deid_job = self.deid_job.reload(self.fw_client)
@@ -223,7 +225,6 @@ class FileExporter:
                             self.error_handler(log_str)
                     else:
                         pass
-
 
             except Exception as e:
 
@@ -279,7 +280,8 @@ class FileExporter:
                 f'{self.filename} already exists in {self.dest_parent.container_type} {self.dest_parent.id} '
                 f'{self.origin_filename} cannot be exported as {self.filename}'
             )
-            self.error_handler(log_str)
+            self.log.warning(log_str)
+            self.state = 'exists_at_destination'
             return None
         if not os.path.exists(template_path):
             self.error_handler(
@@ -306,12 +308,13 @@ class FileExporter:
                 # Delete prior to upload if overwrite
                 if os.path.exists(deid_path) and self.dest_parent.get_file(self.filename) and self.overwrite:
                     self.log.debug(f'deleting {self.filename} on {self.dest_parent.container_type} {self.dest_parent.id}')
-                    self.dest.delete_file(self.filename)
+                    self.dest_parent.delete_file(self.filename)
+
                 self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
                 self.dest_parent.upload_file(deid_path)
+                if self.overwrite and self.dest:
+                    self.state = 'overwrite_exported'
 
-                self.state = 'exported'
-                self.dest = self.dest_parent.reload().get_file(self.filename)
 
         except Exception as e:
             self.error_handler(
@@ -324,6 +327,7 @@ class FileExporter:
         status_dict = {
             'origin_filename': self.origin.name,
             'origin_parent': self.origin_parent.id,
+            'origin_parent_type': self.origin_parent.container_type,
             'export_filename': self.filename,
             'export_file_id': None,
             'export_parent': self.dest_parent.id,

@@ -12,11 +12,12 @@ def get_analysis_parent(fw_client, container_id):
     """
     :param fw_client: an instance of the Flywheel client
     :param container_id: a flywheel analysis container id
-    :return: the container object
+    :return: the container object or None if an exception is raised retrieving the container
     """
     try:
         container = fw_client.get(container_id)
         container_parent = fw_client.get(container.parent.id)
+        log.info(f'Destination is {container_parent.container_type} with id {container_parent.id}')
         return container_parent
     except Exception as e:
         log.error(e, exc_info=True)
@@ -24,6 +25,13 @@ def get_analysis_parent(fw_client, container_id):
 
 
 def lookup_project(fw_client, project_resolver_path):
+    """
+    Attempts to lookup and return the project at the resolver path. If the path is not for a project or an exception is
+    raised, will return None
+    :param fw_client:
+    :param project_resolver_path:
+    :return: the project at the resolver path
+    """
     try:
         project = fw_client.lookup(project_resolver_path)
         if project.container_type != 'project':
@@ -43,10 +51,11 @@ def parse_args_from_context(gear_context):
     project = lookup_project(gear_context.client, project_path)
     destination_id = gear_context.destination.get('id')
 
-
     if destination_id == 'aex':
         destination_id = '5e1639d04e12830026542074'
+
     origin = get_analysis_parent(gear_context.client, destination_id)
+
     # Return None if we failed to get the origin or destination project
     if not project or not origin:
         return None
@@ -76,6 +85,8 @@ def main(gear_context):
         container_export.export_container(**export_args)
         if os.path.isfile(export_args.get('csv_output_path')):
             return 0
+        else:
+            return 1
 
 
 if __name__ == '__main__':
