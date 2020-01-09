@@ -10,7 +10,7 @@ import zipfile
 
 import requests
 import flywheel
-import deid_file
+from deid_export import deid_file
 
 
 log = logging.getLogger(__name__)

@@ -41,7 +41,7 @@ def retry(max_retry=5):
         return wrapper
     return decorator_wrapper
 
-@retry(max_retry=2)
+"""@retry(max_retry=2)
 def failing_function():
     raise Exception("Planned Failure")
 
@@ -58,3 +58,4 @@ try:
     print(failing_function())
 except Exception as e:
     print("It Failed", e)
+"""

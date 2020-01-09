@@ -6,8 +6,11 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-flywheel-migration = "~=0.11.0"
+flywheel-sdk = "~=10.6.1"
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "abbfe2fe407f14cc8501901167a330f8d88e7d63"}
 pyaml = "*"
+joblib = "*"
+pandas = "*"
 
 [requires]
 python_version = "3.8"

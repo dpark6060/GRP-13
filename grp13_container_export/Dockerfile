@@ -12,5 +12,6 @@ RUN apt-get update && apt-get -y install git
 RUN pip install pipenv==2018.11.26
 RUN pipenv install --deploy --ignore-pipfile
 
-COPY run.py ${FLYWHEEL}
-COPY deid_file.py ${FLYWHEEL}
+ADD utils ${FLYWHEEL}/utils
+ADD grp13_utility ${FLYWHEEL}/grp13_utility
+ADD grp13_container_export ${FLYWHEEL}/grp13_container_export

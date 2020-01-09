@@ -8,8 +8,8 @@ import tempfile
 
 import flywheel
 
-from .utils.retry import retry
-from .utils.deid_file import deidentify_path
+from .retry import retry
+from .deid_file import deidentify_path
 
 
 @contextlib.contextmanager
@@ -48,7 +48,7 @@ def get_job_state_from_logs(job_log_obj,
                             max_seconds=500):
     """
     Parses job log to get information about state, leveraging log timestamps
-    (configured to be UTC for grp-13-deid-file
+    (configured to be UTC for grp-13-deid-file)
     :return:
     """
     # If job details were provided, get the state from them
@@ -171,6 +171,7 @@ class FileExporter:
         self.dest_parent = dest_parent
         self.origin_filename = origin_filename
         self.log = logging.getLogger(f'{self.origin_parent.id}_{self.origin_filename}_exporter')
+        self.log.setLevel('DEBUG')
         self.state = 'initialized'
         self.overwrite = overwrite
         self.filename = filename
@@ -185,13 +186,13 @@ class FileExporter:
             self.error_handler(
                 f'{self.origin_filename} does not exist in {self.origin_parent.container_type} {self.origin_parent.id}'
             )
-        self.dest = origin_parent.get_file(filename)
+        self.dest = self.dest_parent.get_file(filename)
         if self.dest and not self.overwrite:
             self.state = 'exported'
 
     def error_handler(self, log_str):
         self.state = 'error'
-        self.log.error(log_str)
+        self.log.error(log_str, exc_info=True)
         self.errors.append(log_str)
 
     @retry(max_retry=2)
@@ -208,24 +209,28 @@ class FileExporter:
                 self.dest = self.dest_parent.get_file(self.filename)
                 if self.dest and not self.overwrite:
                     self.state = 'exported'
-                self.deid_job = self.deid_job.reload(self.fw_client)
-                if self.state == 'pending':
-                    if self.deid_job.state == 'cancelled':
-                        self.state = 'cancelled'
-                    elif self.deid_job.state in ['failed', 'failed_or_cancelled']:
-                        log_str = (
-                            f'De-id job failed. Please refer to the logs for job {self.deid_job.id} for '
-                            f'{self.dest_parent.container_type} {self.dest_parent.id} '
-                            'for additional details'
-                        )
-                        self.error_handler(log_str)
+                if self.deid_job.id:
+                    self.deid_job = self.deid_job.reload(self.fw_client)
+                    if self.state == 'pending':
+                        if self.deid_job.state == 'cancelled':
+                            self.state = 'cancelled'
+                        elif self.deid_job.state in ['failed', 'failed_or_cancelled']:
+                            log_str = (
+                                f'De-id job failed. Please refer to the logs for job {self.deid_job.id} for '
+                                f'{self.dest_parent.container_type} {self.dest_parent.id} '
+                                'for additional details'
+                            )
+                            self.error_handler(log_str)
                     else:
                         pass
+
 
             except Exception as e:
 
                 log_str = f'An exception occurred while reloading {self.origin.id} ({self.filename}): {e}'
                 self.error_handler(log_str)
+            finally:
+                return self
 
     def submit_deid_job(self, gear_path, template_file_obj):
 
@@ -283,17 +288,30 @@ class FileExporter:
             )
             return None
         try:
+
             with make_temp_directory() as temp_dir:
                 # Download the file
+
                 local_file_path = os.path.join(temp_dir, self.filename)
+                self.log.debug(f'Downloading {self.origin.name} to {local_file_path}')
                 self.origin.download(local_file_path)
 
                 # De-identify
+                self.log.debug(
+                    f'Applying de-identfication template {os.path.basename(template_path)}'
+                    f' to {os.path.basename(local_file_path)}'
+                )
                 deid_path = deidentify_path(input_file_path=local_file_path, profile_path=template_path)
+
+                # Delete prior to upload if overwrite
+                if os.path.exists(deid_path) and self.dest_parent.get_file(self.filename) and self.overwrite:
+                    self.log.debug(f'deleting {self.filename} on {self.dest_parent.container_type} {self.dest_parent.id}')
+                    self.dest.delete_file(self.filename)
+                self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
                 self.dest_parent.upload_file(deid_path)
 
                 self.state = 'exported'
-                self.reload()
+                self.dest = self.dest_parent.reload().get_file(self.filename)
 
         except Exception as e:
             self.error_handler(
@@ -301,6 +319,21 @@ class FileExporter:
                 f'{self.filename} will not be exported to {self.dest_parent.id} exception:\n{e}'
             )
             return None
+
+    def get_status_dict(self):
+        status_dict = {
+            'origin_filename': self.origin.name,
+            'origin_parent': self.origin_parent.id,
+            'export_filename': self.filename,
+            'export_file_id': None,
+            'export_parent': self.dest_parent.id,
+            'state': self.state,
+            'errors': '\t'.join(self.errors)
+        }
+        if self.dest != None:
+            status_dict['export_file_id'] = self.dest.id
+        return status_dict
+
 
 
 
