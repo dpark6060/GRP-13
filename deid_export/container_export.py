@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import time
 import signal
 import sys
 
@@ -221,6 +222,7 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
     )
     if file_exporter.state != 'error':
         file_exporter.local_deid_export(template_path=template_path)
+    time.sleep(2)
     status_dict = file_exporter.get_status_dict()
     del file_exporter
 

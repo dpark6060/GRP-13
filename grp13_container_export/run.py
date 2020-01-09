@@ -17,7 +17,8 @@ def get_analysis_parent(fw_client, container_id):
     try:
         container = fw_client.get(container_id)
         container_parent = fw_client.get(container.parent.id)
-        log.info(f'Destination is {container_parent.container_type} with id {container_parent.id}')
+        log.info(f'Destination analysis {container.id} parent is a {container_parent.container_type} with '
+                 f'id {container_parent.id}')
         return container_parent
     except Exception as e:
         log.error(e, exc_info=True)
