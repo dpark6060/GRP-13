@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -24,6 +25,11 @@ META_WHITELIST_DICT = {
 }
 
 log = logging.getLogger(__name__)
+
+
+def hash_string(input_str):
+    output_hash = hashlib.sha1(input_str.encode()).hexdigest()
+    return output_hash
 
 
 def load_template_file(template_file_path):
@@ -134,7 +140,7 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
         dest_subject = new_subject.reload()
     else:
         log.debug(f'Using destination subject ({dest_subject.id})')
-        dest_subject.update_info({'export': {'origin_id': origin_subject.id}})
+        dest_subject.update_info({'export': {'origin_id': hash_string(origin_subject.id)}})
         dest_subject.reload()
     return dest_subject
 
@@ -147,7 +153,7 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
     new_label = session_config.get('label', origin_session.label)
     query = (
         f'label={quote_numeric_string(new_label)},'
-        f'info.export.origin_id="{origin_session.id}"'
+        f'info.export.origin_id="{hash_string(origin_session.id)}"'
     )
     dest_session = dest_subject.sessions.find_first(query)
     if not dest_session:
@@ -158,7 +164,7 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
         dest_session = dest_subject.add_session(label=new_label, **meta_dict)
     else:
         log.debug(f'Using destination session ({dest_session.id})')
-        dest_session.update_info({'export': {'origin_id': origin_session.id}})
+        dest_session.update_info({'export': {'origin_id': hash_string(origin_session.id)}})
         dest_session = dest_session.reload()
     return dest_session
 
@@ -181,7 +187,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
         dest_acquisition = dest_session.add_acquisition(label=origin_acquisition.label, **meta_dict)
     else:
         log.info(f'Using destination acquisition ({dest_acquisition.id})')
-        dest_acquisition.update_info({'export': {'origin_id': origin_acquisition.id}})
+        dest_acquisition.update_info({'export': {'origin_id': hash_string(origin_acquisition.id)}})
         dest_acquisition.reload()
     return dest_acquisition
 
