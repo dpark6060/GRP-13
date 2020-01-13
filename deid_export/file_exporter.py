@@ -190,6 +190,7 @@ class FileExporter:
         self.dest = self.dest_parent.get_file(filename)
         if self.dest and not self.overwrite:
             self.state = 'exists_at_destination'
+        self.initial_state = self.state
 
     def error_handler(self, log_str):
         self.state = 'error'
@@ -208,8 +209,11 @@ class FileExporter:
                 self.reload_fw_object(self.origin_parent)
                 self.reload_fw_object(self.dest_parent)
                 self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and self.state not in ['exists_at_destination', 'overwrite_exported']:
-                    self.state = 'exported'
+                if self.dest and self.state in ['pending', 'running', 'upload_attempted']:
+                    if not self.overwrite:
+                        self.state = 'exported'
+                    else:
+                        self.state = 'overwrite_exported'
                 if self.deid_job.id:
                     self.deid_job = self.deid_job.reload(self.fw_client)
                     if self.state == 'pending':
@@ -224,6 +228,7 @@ class FileExporter:
                             self.error_handler(log_str)
                     else:
                         pass
+                self.log.debug(f'{self.filename} state is {self.state}')
 
             except Exception as e:
 
@@ -272,6 +277,7 @@ class FileExporter:
             self.deid_job.cancel(self.fw_client)
             self.state = 'cancelled'
 
+    @retry(3)
     def local_deid_export(self, template_path):
         self.reload()
         if self.dest and not self.overwrite:
@@ -312,7 +318,7 @@ class FileExporter:
                 self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
                 self.dest_parent.upload_file(deid_path)
                 if self.overwrite and self.dest:
-                    self.state = 'overwrite_exported'
+                    self.state = 'upload_attempted'
 
 
         except Exception as e:
@@ -323,6 +329,7 @@ class FileExporter:
             return None
 
     def get_status_dict(self):
+        self.reload()
         status_dict = {
             'origin_filename': self.origin.name,
             'origin_parent': self.origin_parent.id,

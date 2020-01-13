@@ -1,6 +1,6 @@
 import logging
 import functools
-
+import sys
 
 log = logging.getLogger(__name__)
 
@@ -36,8 +36,9 @@ def retry(max_retry=5):
                 except Exception as ex:
                     log.debug(f'Failed to call {func.__name__}, in retry({i + 1}/{max_retry})')
                     caught_exception = ex
+
             else:
-                raise RetryException(caught_exception, max_retry)
+                raise caught_exception
         return wrapper
     return decorator_wrapper
 

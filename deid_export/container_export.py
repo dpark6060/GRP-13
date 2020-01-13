@@ -222,7 +222,8 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
     )
     if file_exporter.state != 'error':
         file_exporter.local_deid_export(template_path=template_path)
-    time.sleep(2)
+    time.sleep(5)
+    file_exporter.reload()
     status_dict = file_exporter.get_status_dict()
     del file_exporter
 
@@ -407,19 +408,23 @@ def export_session(
 
 
 #TODO: incorporate filetype list
-def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None, overwrite=False):
+def export_container(fw_client, container_id, dest_proj_id, template_path,
+                     csv_output_path=None, overwrite=False, project_files=False):
     container = fw_client.get(container_id).reload()
     subject_files = False
-    project_files = False
+
     if container.container_type not in ['subject', 'project', 'session']:
         raise ValueError(f'Cannot load container type {container.container_type}. Must be session, subject, or project')
     elif container.container_type == 'project':
         project_files = True
+        for subject in container.subjects():
+            export_container(fw_client=fw_client, container_id=subject.id, dest_proj_id=dest_proj_id,
+                             template_path=template_path, csv_output_path=csv_output_path,
+                             overwrite=overwrite, project_files=project_files)
+            project_files = False
+
     elif container.container_type == 'subject':
         subject_files = True
-    session_df = None
-    if container.container_type in ['subject', 'project']:
-        first_session = True
 
         for session in container.sessions():
 
@@ -433,10 +438,9 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                 overwrite=overwrite
             )
             # We only need to copy subject/project files once
-            if first_session:
-                first_session = False
-                subject_files = False
-                project_files = False
+            subject_files = False
+            project_files = False
+
             if isinstance(session_df, pd.DataFrame):
                 if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
                     session_df.to_csv(csv_output_path, index=False)
@@ -460,7 +464,6 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
                 session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
 
-    del session_df
     log.info(f'Export for {container.container_type} {container.id} is complete')
 
 

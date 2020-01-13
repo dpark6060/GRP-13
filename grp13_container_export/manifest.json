@@ -2,7 +2,7 @@
 	"name": "grp13-container-export",
 	"label": "GRP-13: De-identified/Anonymized File Export - Container",
 	"description": "Created by the gear builder. Edit the manifest file to give this gear a description!",
-	"version": "0.0.1.0101",
+	"version": "0.0.1.0107",
 	"inputs": {
 		"api-key": {
 			"base": "api-key"
