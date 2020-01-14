@@ -1,4 +1,5 @@
 dicom:
+  remove_private_tags: true
   fields:
     - name: PatientBirthDate
       remove: true

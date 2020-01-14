@@ -83,28 +83,25 @@ def parse_deid_template(template_filepath):
     :param template_filepath: path to the de-identification template
     :type template_filepath: str
     :return: profile
-    :rtype: flywheel_migration.deidentify.deid_profile.DeIdProfile
+    :rtype: dict
     """
     _, ext = os.path.splitext(template_filepath.lower())
 
-    config = None
+    template = None
     try:
         if ext == '.json':
             with open(template_filepath, 'r') as f:
-                config = json.load(f)
+                template = json.load(f)
         elif ext in ['.yml', '.yaml']:
             with open(template_filepath, 'r') as f:
-                config = yaml.load(f)
+                template = yaml.load(f)
     except ValueError:
         log.exception('Unable to load config at: %s', template_filepath)
 
-    if not config:
+    if not template:
         raise ValueError('Could not load config at: {}'.format(template_filepath))
 
-    profile = DeIdProfile()
-    profile.load_config(config)
-
-    return profile
+    return template
 
 
 def load_dicom_deid_profile(template_filepath):
@@ -161,6 +158,10 @@ def deidentify_files(profile_path, input_directory, profile_name='dicom', file_l
     with tempfile.TemporaryDirectory() as tmp_deid_dir:
         # Load the de-id profile from a file
         deid_profile = deidentify.load_profile(profile_path)
+
+        # Load the de-id profile as a dictionary
+        template_dict = parse_deid_template(profile_path)
+
         if date_increment:
             deid_profile.date_increment = date_increment
 
@@ -183,6 +184,11 @@ def deidentify_files(profile_path, input_directory, profile_name='dicom', file_l
         
         # Get the dicom profile from the de-id profile
         file_profile = deid_profile.get_file_profile(profile_name)
+        if template_dict.get(profile_name):
+            file_dict = template_dict.get(profile_name)
+            if file_dict.get('remove_private_tags') == True:
+                file_profile.remove_private_tags = True
+
         file_profile.get_dest_path = default_path
         file_profile.process_files(src_fs, dst_fs, file_list)
 
