@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e4504b5a3270ecbf29fb3037b512c29e43fcaf3ee48a1e7d570213a98dd3a71f"
+            "sha256": "d02b698c1e75b44965b73dfb9cbec1a54501448802424077f22fa99e30d7d4b1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -40,7 +40,7 @@
         "flywheel-migration": {
             "editable": true,
             "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
-            "ref": "abbfe2fe407f14cc8501901167a330f8d88e7d63"
+            "ref": "7cddad5add6c3d5143050807e45ebebae51b3373"
         },
         "flywheel-sdk": {
             "hashes": [

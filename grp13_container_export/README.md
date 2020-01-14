@@ -149,7 +149,9 @@ META_WHITELIST_DICT = {
 # Workflow
 
 1. User creates a destination project and enables gear rules. Importantly, 
-GRP-3 should be enabled to parse the de-identified DICOM headers. 
+GRP-3 should be enabled to parse the de-identified DICOM headers. Further,
+the permissions on this project should be restricted until the user
+exporting the project has reviewed this project (after gear execution).
 1. GRP-7 is used to modify container metadata in preparation for export
 1. User runs this analysis gear at the project, session, or subject
 level and provides the following inputs:
