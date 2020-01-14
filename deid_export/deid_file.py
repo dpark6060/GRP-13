@@ -94,7 +94,7 @@ def parse_deid_template(template_filepath):
                 template = json.load(f)
         elif ext in ['.yml', '.yaml']:
             with open(template_filepath, 'r') as f:
-                template = yaml.load(f)
+                template = yaml.load(f, Loader=yaml.FullLoader)
     except ValueError:
         log.exception('Unable to load config at: %s', template_filepath)
 

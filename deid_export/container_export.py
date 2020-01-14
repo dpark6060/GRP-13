@@ -424,7 +424,7 @@ def export_session(
 def export_container(fw_client, container_id, dest_proj_id, template_path,
                      csv_output_path=None, overwrite=False, project_files=False, subject_files=False):
     container = fw_client.get(container_id).reload()
-    subject_files = False
+
     error_count = 0
     if container.container_type not in ['subject', 'project', 'session']:
         raise ValueError(f'Cannot load container type {container.container_type}. Must be session, subject, or project')
