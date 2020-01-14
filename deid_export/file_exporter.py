@@ -13,15 +13,6 @@ from .retry import retry
 from .deid_file import deidentify_path
 
 
-@contextlib.contextmanager
-def make_temp_directory():
-    temp_dir = tempfile.mkdtemp()
-    try:
-        yield temp_dir
-    finally:
-        shutil.rmtree(temp_dir)
-
-
 def search_job_log_str(regex_string, job_log_str):
     if not job_log_str:
         return list()
@@ -188,7 +179,7 @@ class FileExporter:
                 f'{self.origin_filename} does not exist in {self.origin_parent.container_type} {self.origin_parent.id}'
             )
         self.dest = self.dest_parent.get_file(filename)
-        if self.dest and not self.overwrite:
+        if self.dest:
             self.state = 'exists_at_destination'
         self.initial_state = self.state
 
@@ -206,11 +197,13 @@ class FileExporter:
     def reload(self):
         if self.state != 'error':
             try:
-                self.reload_fw_object(self.origin_parent)
-                self.reload_fw_object(self.dest_parent)
+                self.origin_parent = self.origin_parent.reload()
+                self.dest_parent = self.dest_parent.reload()
                 self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and self.state in ['pending', 'running', 'upload_attempted']:
+                if self.dest and self.state in ['pending', 'running', 'upload_attempted', 'initialized']:
                     if not self.overwrite:
+                        self.state = 'exported'
+                    elif self.overwrite and self.initial_state != 'exists_at_destination':
                         self.state = 'exported'
                     else:
                         self.state = 'overwrite_exported'
@@ -296,7 +289,7 @@ class FileExporter:
             return None
         try:
 
-            with make_temp_directory() as temp_dir:
+            with tempfile.TemporaryDirectory() as temp_dir:
                 # Download the file
 
                 local_file_path = os.path.join(temp_dir, self.filename)
@@ -317,8 +310,7 @@ class FileExporter:
 
                 self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
                 self.dest_parent.upload_file(deid_path)
-                if self.overwrite and self.dest:
-                    self.state = 'upload_attempted'
+                self.state = 'upload_attempted'
 
 
         except Exception as e:

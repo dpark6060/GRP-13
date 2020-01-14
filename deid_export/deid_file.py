@@ -19,15 +19,6 @@ from flywheel_migration.deidentify.deid_profile import DeIdProfile
 log = logging.getLogger(__name__)
 
 
-@contextlib.contextmanager
-def make_temp_directory():
-    temp_dir = tempfile.mkdtemp()
-    try:
-        yield temp_dir
-    finally:
-        shutil.rmtree(temp_dir)
-
-
 def extract_files(zip_path, output_directory):
     """
     extracts the files in a zip to an output directory
@@ -57,7 +48,7 @@ def recreate_zip(dest_zip, file_directory, output_directory=None):
     :return: output_path, a path to the resultant zip
     """
     # temporary directory context
-    with make_temp_directory() as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         # temporary file context
         _, tmp_zip_path = tempfile.mkstemp(dir=temp_dir)
         # read zip context
@@ -167,7 +158,7 @@ def deidentify_files(profile_path, input_directory, profile_name='dicom', file_l
     :return: deid_paths, list of paths to deidentified files or None if no files are de-identified
     :rtype: list
     """
-    with make_temp_directory() as tmp_deid_dir:
+    with tempfile.TemporaryDirectory() as tmp_deid_dir:
         # Load the de-id profile from a file
         deid_profile = deidentify.load_profile(profile_path)
         if date_increment:
@@ -215,7 +206,7 @@ def deidentify_files(profile_path, input_directory, profile_name='dicom', file_l
 
 
 def deid_archive(zip_path, profile_path, output_directory=None, date_increment=None):
-    with make_temp_directory() as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         file_list = extract_files(zip_path=zip_path, output_directory=temp_dir)
         deid_file_list = deidentify_files(
             input_directory=temp_dir, 

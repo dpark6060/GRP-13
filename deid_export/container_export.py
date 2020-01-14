@@ -104,7 +104,7 @@ def create_metadata_dict(origin_container, container_config=None):
     else:
         meta_dict['info'] = dict()
     # set info.export.origin_id for record-keeping
-    meta_dict['info']['export'] = {'origin_id': origin_container.id}
+    meta_dict['info']['export'] = {'origin_id': hash_string(origin_container.id)}
     meta_whitelist = META_WHITELIST_DICT.get(origin_container.container_type)
     # Copy info fields
     for key, value in origin_container.items():
@@ -128,11 +128,12 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
 
     # Since subject code must be unique within a project, we do not need to search by info.export.origin_id
     dest_subject = dest_proj.subjects.find_first(f'code={query_code}')
+    # Copy over metadata as specified
+    meta_dict = create_metadata_dict(origin_subject, subject_config)
 
     if not dest_subject:
         log.debug(f'Creating destination subject for ({origin_subject.id})')
-        # Copy over metadata as specified
-        meta_dict = create_metadata_dict(origin_subject, subject_config)
+
         # Add the subject to the destination project
         new_subject = dest_proj.add_subject(code=new_code, label=new_code, **meta_dict)
 
@@ -140,7 +141,7 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
         dest_subject = new_subject.reload()
     else:
         log.debug(f'Using destination subject ({dest_subject.id})')
-        dest_subject.update_info({'export': {'origin_id': hash_string(origin_subject.id)}})
+        dest_subject.update(meta_dict)
         dest_subject.reload()
     return dest_subject
 
@@ -156,6 +157,8 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
         f'info.export.origin_id="{hash_string(origin_session.id)}"'
     )
     dest_session = dest_subject.sessions.find_first(query)
+    # Copy over metadata as specified
+    meta_dict = create_metadata_dict(origin_session, session_config)
     if not dest_session:
         log.debug(f'Creating destination session for ({origin_session.id})')
         # Copy over metadata as specified
@@ -164,7 +167,7 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
         dest_session = dest_subject.add_session(label=new_label, **meta_dict)
     else:
         log.debug(f'Using destination session ({dest_session.id})')
-        dest_session.update_info({'export': {'origin_id': hash_string(origin_session.id)}})
+        dest_session.update(meta_dict)
         dest_session = dest_session.reload()
     return dest_session
 
@@ -176,9 +179,11 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
         acquisition_config = dict()
     query = (
         f'label={quote_numeric_string(origin_acquisition.label)},'
-        f'info.export.origin_id="{origin_acquisition.id}"'
+        f'info.export.origin_id="{hash_string(origin_acquisition.id)}"'
     )
     dest_acquisition = dest_session.acquisitions.find_first(query)
+    # Copy over metadata as specified
+    meta_dict = create_metadata_dict(origin_acquisition, acquisition_config)
     if not dest_acquisition:
         log.info(f'Creating destination acquisition for ({origin_acquisition.id})')
         # Copy over metadata as specified
@@ -187,7 +192,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
         dest_acquisition = dest_session.add_acquisition(label=origin_acquisition.label, **meta_dict)
     else:
         log.info(f'Using destination acquisition ({dest_acquisition.id})')
-        dest_acquisition.update_info({'export': {'origin_id': hash_string(origin_acquisition.id)}})
+        dest_acquisition.update(meta_dict)
         dest_acquisition.reload()
     return dest_acquisition
 
@@ -228,8 +233,7 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
     )
     if file_exporter.state != 'error':
         file_exporter.local_deid_export(template_path=template_path)
-    time.sleep(5)
-    file_exporter.reload()
+    time.sleep(2)
     status_dict = file_exporter.get_status_dict()
     del file_exporter
 
@@ -406,7 +410,8 @@ def export_session(
 
         if session_export_df['state'].all() == 'error':
             log.error(
-                f'Failed to export all {origin_session_id} files. Please check template {os.path.basename(template_path)}'
+                f'Failed to export all {origin_session_id} files.'
+                f' Please check template {os.path.basename(template_path)}'
             )
         return session_export_df
     else:
@@ -421,6 +426,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path,
 
     if container.container_type not in ['subject', 'project', 'session']:
         raise ValueError(f'Cannot load container type {container.container_type}. Must be session, subject, or project')
+
     elif container.container_type == 'project':
         project_files = True
         for subject in container.subjects():
