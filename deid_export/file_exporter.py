@@ -1,10 +1,8 @@
-import contextlib
+
 import datetime
 import logging
 import os
 import re
-import shutil
-
 import tempfile
 
 import flywheel
@@ -157,13 +155,14 @@ class DeidUtilityJob:
 class FileExporter:
     """A class for representing the export status of a file"""
     @retry(max_retry=2)
-    def __init__(self, fw_client, origin_parent, origin_filename, dest_parent, filename=None, overwrite=False):
+    def __init__(self, fw_client, origin_parent, origin_filename, dest_parent, filename=None, overwrite=False,
+                 log_level='INFO'):
         self.fw_client = fw_client
         self.origin_parent = origin_parent
         self.dest_parent = dest_parent
         self.origin_filename = origin_filename
         self.log = logging.getLogger(f'{self.origin_parent.id}_{self.origin_filename}_exporter')
-        self.log.setLevel('DEBUG')
+        self.log.setLevel(log_level)
         self.state = 'initialized'
         self.overwrite = overwrite
         self.filename = filename
@@ -200,13 +199,16 @@ class FileExporter:
                 self.origin_parent = self.origin_parent.reload()
                 self.dest_parent = self.dest_parent.reload()
                 self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and self.state in ['pending', 'running', 'upload_attempted', 'initialized']:
+                if self.dest and self.state in ['pending', 'running', 'upload_attempted']:
                     if not self.overwrite:
                         self.state = 'exported'
-                    elif self.overwrite and self.initial_state != 'exists_at_destination':
-                        self.state = 'exported'
                     else:
-                        self.state = 'overwrite_exported'
+                        if self.state == 'upload_attempted':
+                            if self.initial_state == 'exists_at_destination':
+                                self.state = 'overwrite_exported'
+                            else:
+                                self.state = 'exported'
+
                 if self.deid_job.id:
                     self.deid_job = self.deid_job.reload(self.fw_client)
                     if self.state == 'pending':
@@ -219,6 +221,8 @@ class FileExporter:
                                 'for additional details'
                             )
                             self.error_handler(log_str)
+                    elif self.deid_job.state  == 'complete' and self.dest:
+                        self.state = 'exported'
                     else:
                         pass
                 self.log.debug(f'{self.filename} state is {self.state}')
@@ -270,7 +274,6 @@ class FileExporter:
             self.deid_job.cancel(self.fw_client)
             self.state = 'cancelled'
 
-    @retry(3)
     def local_deid_export(self, template_path):
         self.reload()
         if self.dest and not self.overwrite:
@@ -287,8 +290,9 @@ class FileExporter:
                 f'{self.dest_parent.id}'
             )
             return None
-        try:
 
+        @retry(3)
+        def _attempt_export():
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Download the file
 
@@ -311,7 +315,8 @@ class FileExporter:
                 self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
                 self.dest_parent.upload_file(deid_path)
                 self.state = 'upload_attempted'
-
+        try:
+            _attempt_export()
 
         except Exception as e:
             self.error_handler(

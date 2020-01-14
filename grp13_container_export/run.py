@@ -83,8 +83,8 @@ def main(gear_context):
         log.error('Exiting...')
         return 1
     else:
-        container_export.export_container(**export_args)
-        if os.path.isfile(export_args.get('csv_output_path')):
+        error_count = container_export.export_container(**export_args)
+        if os.path.isfile(export_args.get('csv_output_path')) and error_count == 0:
             return 0
         else:
             return 1
