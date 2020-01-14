@@ -2,7 +2,7 @@
 	"name": "grp13-container-export",
 	"label": "GRP-13: De-identified/Anonymized File Export - Container",
 	"description": "Created by the gear builder. Edit the manifest file to give this gear a description!",
-	"version": "0.0.1.018",
+	"version": "0.0.1",
 	"inputs": {
 		"api-key": {
 			"base": "api-key"
@@ -31,7 +31,7 @@
 			"enum": ["dicom"]
 		},
 		"overwrite_files": {
-			"default": false,
+			"default": true,
 			"description": "If true, existing files in destination containers will be overwritten if a file to  be exported shares their filename",
 			"type": "boolean"
 		}

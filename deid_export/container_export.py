@@ -25,6 +25,7 @@ META_WHITELIST_DICT = {
 }
 
 log = logging.getLogger(__name__)
+log.setLevel('INFO')
 
 
 def hash_string(input_str):
@@ -185,13 +186,13 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
     # Copy over metadata as specified
     meta_dict = create_metadata_dict(origin_acquisition, acquisition_config)
     if not dest_acquisition:
-        log.info(f'Creating destination acquisition for ({origin_acquisition.id})')
+        log.debug(f'Creating destination acquisition for ({origin_acquisition.id})')
         # Copy over metadata as specified
         meta_dict = create_metadata_dict(origin_acquisition, acquisition_config)
         # Add acquisition to session
         dest_acquisition = dest_session.add_acquisition(label=origin_acquisition.label, **meta_dict)
     else:
-        log.info(f'Using destination acquisition ({dest_acquisition.id})')
+        log.debug(f'Using destination acquisition ({dest_acquisition.id})')
         dest_acquisition.update(meta_dict)
         dest_acquisition.reload()
     return dest_acquisition
@@ -208,7 +209,7 @@ def initialize_container_file_export(fw_client,
         export_filename = filename_dict.get(container_file.name, None)
 
         if container_file.type in filetype_list:
-            log.info(f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
+            log.debug(f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
             tmp_file_exporter = FileExporter(
                 fw_client=fw_client,
                 origin_parent=origin_container,
@@ -301,7 +302,7 @@ class SessionExporter:
         self.dest.reload()
 
     def initialize_files(self, subject_files=False, project_files=False, filename_dict=None):
-        log.info(f'Initializing {self.origin.id} files')
+        log.debug(f'Initializing {self.origin.id} files')
         if not isinstance(filename_dict, dict):
             filename_dict = dict()
         if not self.dest:

@@ -68,8 +68,6 @@ as below:
    
     
 * Per GRP-13-02, nested elements/sequences can be specified as below:
-(the current version appears to throw an exception if the Sequence 
-is not present)
 
     ``` yaml
     name: nametag-profile
@@ -146,6 +144,44 @@ META_WHITELIST_DICT = {
     }
 }
 ```
+
+## Configuration Options
+### project_path (required)
+The resolver path (<group>/<project>) to the destination project. 
+This project must exist AND the user running the gear must have 
+read/write access on this project.
+
+### file_type 
+the type of files to de-identify/anonymize and export. Currently only 
+"dicom" is supported.
+
+### overwrite_files (default = true)
+If true, any existing files in the destination project that have been 
+exported previously will be overwritten so long as their parent container 
+has `info.export.origin_id` defined.
+
+### Manifest JSON for configuration options
+```json
+"config": {
+    "project_path": {
+        "optional": false,
+        "description": "The resolver path of the destination project, for example, flywheel/test",
+        "type": "string"
+    },
+    "file_type": {
+        "default": "dicom",
+        "description": "the type of files to de-identify/anonymize and export",
+        "type": "string",
+        "enum": ["dicom"]
+    },
+    "overwrite_files": {
+        "default": true,
+        "description": "If true, existing files in destination containers will be overwritten if a file to  be exported shares their filename",
+        "type": "boolean"
+    }
+}
+```
+
 # Workflow
 
 1. User creates a destination project and enables gear rules. Importantly, 
