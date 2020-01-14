@@ -421,52 +421,58 @@ def export_session(
 
 
 # TODO: incorporate filetype list
-def export_container(fw_client, container_id, dest_proj_id, template_path,
-                     csv_output_path=None, overwrite=False, project_files=False, subject_files=False):
+def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None, overwrite=False):
     container = fw_client.get(container_id).reload()
 
     error_count = 0
+
+    def _export_session(session_id, project_files=False, subject_files=False):
+        session_df = export_session(
+            fw_client=fw_client,
+            origin_session_id=session_id,
+            dest_proj_id=dest_proj_id,
+            template_path=template_path,
+            subject_files=subject_files,
+            project_files=project_files,
+            csv_output_path=None,
+            overwrite=overwrite)
+        df_count = session_df['state'].value_counts().get('error', 0)
+
+        if isinstance(session_df, pd.DataFrame):
+            if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                session_df.to_csv(csv_output_path, index=False)
+            elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
+        return df_count
+
     if container.container_type not in ['subject', 'project', 'session']:
         raise ValueError(f'Cannot load container type {container.container_type}. Must be session, subject, or project')
 
     elif container.container_type == 'project':
         project_files = True
         for subject in container.subjects():
-            sub_count = export_container(fw_client=fw_client, container_id=subject.id, dest_proj_id=dest_proj_id,
-                                         template_path=template_path, csv_output_path=csv_output_path,
-                                         overwrite=overwrite, project_files=project_files, subject_files=subject_files)
-            error_count += sub_count
-            project_files = False
+            subject = subject.reload()
+            subject_files = True
+            for session in subject.sessions():
+                sess_count = _export_session(session_id=session.id, project_files=project_files,
+                                             subject_files=subject_files)
+                error_count += sess_count
+                subject_files = False
+                project_files = False
 
     elif container.container_type == 'subject':
         subject_files = True
-
+        project_files = False
         for session in container.sessions():
-            sess_count = export_container(fw_client=fw_client, container_id=session.id, dest_proj_id=dest_proj_id,
-                                          template_path=template_path, csv_output_path=csv_output_path,
-                                          overwrite=overwrite, project_files=project_files, subject_files=subject_files)
+            sess_count = _export_session(session_id=session.id, project_files=project_files,
+                                         subject_files=subject_files)
             error_count += sess_count
             # We only need to copy subject/project files once
             subject_files = False
             project_files = False
 
     elif container.container_type == 'session':
-        session_df = export_session(
-            fw_client=fw_client,
-            origin_session_id=container_id,
-            dest_proj_id=dest_proj_id,
-            template_path=template_path,
-            subject_files=False,
-            project_files=False,
-            csv_output_path=None,
-            overwrite=overwrite)
-        df_count = session_df['state'].value_counts().get('error', 0)
-        error_count += df_count
-        if isinstance(session_df, pd.DataFrame):
-            if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                session_df.to_csv(csv_output_path, index=False)
-            elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
+        error_count = _export_session(session_id=container_id)
 
     log.info(f'Export for {container.container_type} {container.id} is complete with {error_count} file export errors')
     return error_count
