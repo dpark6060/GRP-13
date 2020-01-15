@@ -1,0 +1,22 @@
+dicom:
+  remove_private_tags: true
+  fields:
+    - name: PatientBirthDate
+      remove: true
+    - name: PatientID
+      replace-with: FLYWHEEL
+export:
+  session:
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - operator
+        - weight
+  subject:
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - sex
+        - strain

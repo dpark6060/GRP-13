@@ -1,0 +1,65 @@
+{
+	"name": "grp13-container-export",
+	"label": "GRP-13: De-identified/Anonymized File Export - Container",
+	"description": "Created by the gear builder. Edit the manifest file to give this gear a description!",
+	"version": "0.0.1",
+	"inputs": {
+		"api-key": {
+			"base": "api-key"
+		},
+		"deid_template": {
+			"base": "file",
+			"description": "A Flywheel de-identification template specifying the de-identification actions to perform on input_file",
+			"optional": false,
+			"type": {
+				"enum": [
+					"source code"
+				]
+			}
+		}
+	},
+	"config": {
+		"project_path": {
+			"optional": false,
+			"description": "The resolver path of the destination project, for example, flywheel/test",
+			"type": "string"
+		},
+		"file_type": {
+			"default": "dicom",
+			"description": "the type of files to de-identify/anonymize and export",
+			"type": "string",
+			"enum": ["dicom"]
+		},
+		"overwrite_files": {
+			"default": true,
+			"description": "If true, existing files in destination containers will be overwritten if a file to  be exported shares their filename",
+			"type": "boolean"
+		}
+	},
+	"environment": {
+		"GPG_KEY": "E3FF2839C048B25C084DEBE9B26995E310250568",
+		"LANG": "C.UTF-8",
+		"PATH": "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"PYTHON_GET_PIP_SHA256": "b86f36cc4345ae87bfd4f10ef6b2dbfa7a872fbff70608a1e43944d283fd0eee",
+		"PYTHON_GET_PIP_URL": "https://github.com/pypa/get-pip/raw/ffe826207a010164265d9cc807978e3604d18ca0/get-pip.py",
+		"PYTHON_PIP_VERSION": "19.3.1",
+		"PYTHON_VERSION": "3.8.0",
+		"FLYWHEEL_SDK_SKIP_VERSION_CHECK": "true",
+		"PIP_PROCESS_DEPENDENCY_LINKS": "1",
+		"PYTHONPATH": "/flywheel/work:/flywheel/v0"
+
+	},
+	"command": "pipenv run python /flywheel/work/grp13_container_export/run.py",
+	"author": "Kaleb Fischer",
+	"maintainer": "Kaleb Fischer",
+	"cite": "List citations here.",
+	"license": "Other",
+	"source": "",
+	"url": "",
+	"custom": {
+		"gear-builder": {
+			"category": "analysis",
+			"image": "flywheel/grp-13:0.0.0"
+		}
+	}
+}
