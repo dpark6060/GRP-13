@@ -1,68 +1,67 @@
 {
-	"name": "grp-13-deid-file",
-	"label": "GRP 13: De-identify/Anonymize File Utility",
-	"description": "A utility gear for anonymizing files according to a de-identification template",
-	"version": "0.0.1.013",
-	"inputs": {
-		"api-key": {
-			"base": "api-key",
-			"read-only": true
-		},
-		"input_file": {
-			"base": "file",
-			"description": "A file to be de-identified",
-			"optional": false,
-			"type": {
-				"enum": [
-					"dicom"
-				]
-			}
-		},
-		"deid_profile": {
-			"base": "file",
-			"description": "A Flywheel de-identification specifying the de-identification actions to perform on input_file",
-			"optional": false,
-			"type": {
-				"enum": [
-					"source code"
-				]
-			}
-		}
-	},
-	"config": {
-		"output_filename": {
-			"optional": false,
-			"description": "The name to use for the output file (including extension). Cannot match the name of any file in gear destination container",
-			"type": "string"
-		},
-		"overwrite_files": {
-			"default": false,
-			"description": "If true, a pre-existing file with name output_filename will be overwritten",
-			"type": "boolean"
-		}
-	},
-	"environment": {
-		"FLYWHEEL": "/flywheel/v0",
-		"GPG_KEY": "E3FF2839C048B25C084DEBE9B26995E310250568",
-		"LANG": "C.UTF-8",
-		"PATH": "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		"PYTHON_GET_PIP_SHA256": "b86f36cc4345ae87bfd4f10ef6b2dbfa7a872fbff70608a1e43944d283fd0eee",
-		"PYTHON_GET_PIP_URL": "https://github.com/pypa/get-pip/raw/ffe826207a010164265d9cc807978e3604d18ca0/get-pip.py",
-		"PYTHON_PIP_VERSION": "19.3.1",
-		"PYTHON_VERSION": "3.8.0",
-		"PYTHONPATH": "/flywheel/work:/flywheel/v0"
-	},
-	"command": "pipenv run python /flywheel/work/grp13_utility/run.py",
-	"author": "Kaleb Fischer",
-	"maintainer": "Flywheel <support@flywheel.io>",
-	"cite": "",
-	"license": "Other",
-	"source": "https://github.com/flywheel-apps/GRP-13_file-export",
-	"url": "",
-	"custom": {
-		"gear-builder": {
-			"category": "converter",
-			"image": "flywheel/grp-13:0.0.0"
-		}
-	}
+  "name": "grp-13-deid-file",
+  "label": "GRP-13: De-identify/Anonymize File Utility",
+  "description": "A utility gear for anonymizing files according to a de-identification template",
+  "author": "Flywheel SSE",
+  "maintainer": "Flywheel <support@flywheel.io>",
+  "license": "Other",
+  "source": "https://github.com/flywheel-apps/GRP-13",
+  "url": "https://github.com/flywheel-apps/GRP-13/blob/master/grp13_utility/README.md",
+  "version": "0.0.1.014",
+  "custom": {
+    "gear-builder": {
+      "category": "converter",
+      "image": "flywheel/grp-13:0.0.0"
+    }
+  },
+  "inputs": {
+    "api-key": {
+      "base": "api-key",
+      "read-only": true
+    },
+    "input_file": {
+      "base": "file",
+      "description": "A file to be de-identified",
+      "optional": false,
+      "type": {
+        "enum": [
+          "dicom"
+        ]
+      }
+    },
+    "deid_profile": {
+      "base": "file",
+      "description": "A Flywheel de-identification template specifying the de-identification actions to perform.",
+      "optional": false,
+      "type": {
+        "enum": [
+          "source code"
+        ]
+      }
+    }
+  },
+  "config": {
+    "output_filename": {
+      "optional": false,
+      "description": "The name to use for the output file (including extension). Cannot match the name of any file in gear destination container.",
+      "type": "string"
+    },
+    "overwrite_files": {
+      "default": false,
+      "description": "If true, a pre-existing file with name output_filename will be overwritten.",
+      "type": "boolean"
+    }
+  },
+  "environment": {
+    "FLYWHEEL": "/flywheel/v0",
+    "GPG_KEY": "E3FF2839C048B25C084DEBE9B26995E310250568",
+    "LANG": "C.UTF-8",
+    "PATH": "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PYTHON_GET_PIP_SHA256": "b86f36cc4345ae87bfd4f10ef6b2dbfa7a872fbff70608a1e43944d283fd0eee",
+    "PYTHON_GET_PIP_URL": "https://github.com/pypa/get-pip/raw/ffe826207a010164265d9cc807978e3604d18ca0/get-pip.py",
+    "PYTHON_PIP_VERSION": "19.3.1",
+    "PYTHON_VERSION": "3.8.0",
+    "PYTHONPATH": "/flywheel/work:/flywheel/v0"
+  },
+  "command": "pipenv run python /flywheel/work/grp13_utility/run.py"
 }
