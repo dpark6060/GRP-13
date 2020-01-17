@@ -3,7 +3,7 @@ import pandas as pd
 import tempfile
 from pathlib import Path
 from ruamel import yaml
-from deid_export.deid_template import update_deid_profile, validate, process_csv
+from deid_export.deid_template import update_deid_profile, validate, process_csv, DEFAULT_REQUIRED_COLUMNS
 import logging
 
 DATA_ROOT = Path(__file__).parent/'data'
@@ -38,36 +38,43 @@ def test_update_deid_dicom_profile_log_if_no_match_found(caplog):
 
 
 def test_validate_raises_if_missing_required_columns():
-    with open(DATA_ROOT/'example1-deid-profile.yaml') as fid:
-        profile = yaml.load(fid, Loader=yaml.SafeLoader)
+    profile_path = DATA_ROOT/'example1-deid-profile.yaml'
+
     df = pd.read_csv(DATA_ROOT/'example-csv-mapping.csv')
     df.iloc[2, 0] = df.iloc[1, 0]
-    with pytest.raises(ValueError) as exc:
-        validate(profile, df)
-        assert 'not unique' in exc.value.args[0]
+    with tempfile.NamedTemporaryFile(mode='w') as fp:
+        df.to_csv(fp, index=False)
+        with pytest.raises(ValueError) as exc:
+            validate(profile_path, fp.name, required_cols=DEFAULT_REQUIRED_COLUMNS)
+            assert 'not unique' in exc.value.args[0]
 
     df = pd.read_csv(DATA_ROOT/'example-csv-mapping.csv')
     df = df.drop('subject.code', axis=1)
-    with pytest.raises(ValueError) as exc:
-        validate(profile, df)
-        assert 'subject.code' in exc.value.args[0]
+    with tempfile.NamedTemporaryFile(mode='w') as fp:
+        df.to_csv(fp, index=False)
+        with pytest.raises(ValueError) as exc:
+            validate(profile_path, fp.name, required_cols=DEFAULT_REQUIRED_COLUMNS)
+            assert 'subject.code' in exc.value.args[0]
 
 
 def test_validate_log_warning_for_inconsistencies(caplog):
     with open(DATA_ROOT/'example1-deid-profile.yaml') as fid:
         profile = yaml.load(fid, Loader=yaml.SafeLoader)
-    df = pd.read_csv(DATA_ROOT/'example-csv-mapping.csv')
     profile['dicom']['fields'] = profile['dicom']['fields'][:1]
 
-    with caplog.at_level(logging.DEBUG, logger="deid_export.deid_template"):
-        validate(profile, df)
-        assert 'dicom.fields.PatientID.replace-with' in caplog.messages[0]
+    with tempfile.NamedTemporaryFile(mode='w') as fp:
+        yaml.dump(profile, fp, Dumper=yaml.SafeDumper)
+        with caplog.at_level(logging.DEBUG, logger="deid_export.deid_template"):
+            validate(fp.name, DATA_ROOT/'example-csv-mapping.csv', required_cols=DEFAULT_REQUIRED_COLUMNS)
+            assert 'dicom.fields.PatientID.replace-with' in caplog.messages[0]
 
 
 def test_process_csv():
     with tempfile.TemporaryDirectory() as tmp_dir:
 
-        res = process_csv(DATA_ROOT/'example-csv-mapping.csv', DATA_ROOT/'example1-deid-profile.yaml', output_dir=tmp_dir)
+        res = process_csv(DATA_ROOT/'example-csv-mapping.csv',
+                          DATA_ROOT/'example1-deid-profile.yaml',
+                          output_dir=tmp_dir)
 
         assert '001' in res.keys() and '002' in res.keys() and '003' in res.keys()
         with open(res['001'], 'r') as fid:
