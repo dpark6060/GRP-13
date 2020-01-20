@@ -1,4 +1,5 @@
 dicom:
+  date-increment: -10
   remove_private_tags: true
   fields:
     - name: PatientBirthDate
@@ -14,6 +15,7 @@ export:
         - operator
         - weight
   subject:
+    code: FLYWHEEL
     whitelist:
       info:
         - cats

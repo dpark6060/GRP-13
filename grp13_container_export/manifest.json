@@ -27,7 +27,16 @@
           "source code"
         ]
       }
-    }
+    },
+    "csv_mapping": {
+      "base": "file",
+      "description": "A CSV file that contains mapping values used during de-identification.",
+      "optional": true,
+      "type": {
+        "enum": [
+          "source code"
+        ]
+      }
   },
   "config": {
     "project_path": {
