@@ -518,7 +518,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
         with tempfile.TemporaryDirectory() as temp_dir:
             subj_template_path = template_path
             if not subj_error_msg and isinstance(df, pd.DataFrame):
-                subj_template_path, subj_error_msg = _get_subject_template(subject_obj=subject_obj,  subject_df=df,
+                subj_template_path, subj_error_msg = _get_subject_template(subject_obj=subject_obj,
                                                                            directory_path=temp_dir)
             subject_files = True
             for session in subject_obj.sessions():
