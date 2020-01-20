@@ -8,8 +8,8 @@ aliases:
   - &setup-docker-image-name
     name: Setup docker image name
     command: |
-      VER=$(cat manifest.json | jq -r '.version')
-      DOCKER_IMAGE_NAME=$(cat manifest.json | jq '.custom."gear-builder".image')
+      VER=$(cat grp13_container_export/manifest.json | jq -r '.version')
+      DOCKER_IMAGE_NAME=$(cat grp13_container_export/manifest.json | jq '.custom."gear-builder".image')
       echo 'export VER='${VER}  >> $BASH_ENV
       echo 'export DOCKER_IMAGE_NAME='${DOCKER_IMAGE_NAME} >> $BASH_ENV
       echo 'export DOCKER_CACHE_NAME=cache-'${DOCKER_IMAGE_NAME} >> $BASH_ENV
