@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+import tempfile
 import signal
 import sys
 
@@ -17,6 +18,7 @@ import yaml
 
 from deid_export.retry import retry
 from deid_export.file_exporter import FileExporter
+from deid_export import deid_template
 
 META_WHITELIST_DICT = {
     'acquisition': ['timestamp', 'timezone', 'uid'],
@@ -420,22 +422,76 @@ def export_session(
         return None
 
 
+def get_session_error_df(fw_client, session_obj, error_msg, filetypes=None, project_files=False, subject_files=False):
+    if filetypes is None:
+        filetypes = ['dicom']
+    session_obj = session_obj.reload()
+    status_dict_list = list()
+
+    def _append_file_status_dicts(parent_obj):
+        for file_obj in parent_obj.files:
+            if file_obj.type in filetypes:
+                status_dict = {
+                    'origin_filename': file_obj.name,
+                    'origin_parent': parent_obj.id,
+                    'origin_parent_type': parent_obj.container_type,
+                    'export_filename': None,
+                    'export_file_id': None,
+                    'export_parent': None,
+                    'state': 'error',
+                    'errors': error_msg
+                }
+                status_dict_list.append(status_dict)
+
+    # Handle project files
+    if project_files:
+        project_obj = fw_client.get_project(session_obj.project)
+        _append_file_status_dicts(project_obj)
+    # Handle subject files
+    if subject_files:
+        subject_obj = session_obj.subject.reload()
+        _append_file_status_dicts(subject_obj)
+    # Handle session files
+    _append_file_status_dicts(session_obj)
+    # Handle acquisition files
+    for acquisition_obj in session_obj.acquisitions():
+        acquisition_obj = acquisition_obj.reload()
+        _append_file_status_dicts(acquisition_obj)
+
+    session_df = pd.DataFrame(status_dict_list)
+    return session_df
+
+
 # TODO: incorporate filetype list
-def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None, overwrite=False):
+def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None, overwrite=False,
+                     subject_csv_path=None, new_code_col=deid_template.DEFAULT_NEW_SUBJECT_CODE_COL,
+                     old_code_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
     container = fw_client.get(container_id).reload()
-
+    export_error_msg = None
+    template_obj = None
+    df = None
     error_count = 0
+    template_obj = load_template_file(template_path)
 
-    def _export_session(session_id, project_files=False, subject_files=False):
-        session_df = export_session(
-            fw_client=fw_client,
-            origin_session_id=session_id,
-            dest_proj_id=dest_proj_id,
-            template_path=template_path,
-            subject_files=subject_files,
-            project_files=project_files,
-            csv_output_path=None,
-            overwrite=overwrite)
+    if subject_csv_path and template_obj:
+        df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
+                                    subject_code_col=old_code_col, new_subject_code_col=new_code_col)
+
+    def _export_session(session_id, session_template_path, project_files=False,
+                        subject_files=False, sess_error_msg=None):
+        if sess_error_msg:
+            session_obj = fw_client.get_session(session_id)
+            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj)
+        else:
+            session_df = export_session(
+                fw_client=fw_client,
+                origin_session_id=session_id,
+                dest_proj_id=dest_proj_id,
+                template_path=session_template_path,
+                subject_files=subject_files,
+                project_files=project_files,
+                csv_output_path=None,
+                overwrite=overwrite)
         df_count = session_df['state'].value_counts().get('error', 0)
 
         if isinstance(session_df, pd.DataFrame):
@@ -445,34 +501,57 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                 session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
         return df_count
 
+    def _get_subject_template(subject_obj, directory_path):
+        subj_template_path = os.path.join(directory_path, f'{subject_obj.id}_{os.path.basename(template_path)}')
+        try:
+            subj_template_path = deid_template.get_updated_template(
+                df=df, deid_template=template_obj, subject_code=subject_obj.code,
+                subject_code_col=old_code_col, dest_template_path=subj_template_path)
+            error_msg = None
+        except Exception as e:
+            error_msg = f'An exception occured when creating subject template for {subject.code}: {e}'
+            log.error(error_msg, exc_info=True)
+        return subj_template_path, error_msg
+
+    def _export_subject(subject_obj, subj_error_msg=None, project_files=False):
+        subject_error_count = 0
+        with tempfile.TemporaryDirectory() as temp_dir:
+            subj_template_path = template_path
+            if not subj_error_msg and isinstance(df, pd.DataFrame):
+                subj_template_path, subj_error_msg = _get_subject_template(subject_obj=subject_obj,  subject_df=df,
+                                                                           directory_path=temp_dir)
+            subject_files = True
+            for session in subject_obj.sessions():
+                sess_count = _export_session(session_id=session.id, session_template_path=subj_template_path,
+                                             project_files=project_files, subject_files=subject_files,
+                                             sess_error_msg=subj_error_msg)
+                subject_error_count += sess_count
+                subject_files = False
+                project_files = False
+        return subject_error_count
+
     if container.container_type not in ['subject', 'project', 'session']:
         raise ValueError(f'Cannot load container type {container.container_type}. Must be session, subject, or project')
 
     elif container.container_type == 'project':
         project_files = True
         for subject in container.subjects():
-            subject = subject.reload()
-            subject_files = True
-            for session in subject.sessions():
-                sess_count = _export_session(session_id=session.id, project_files=project_files,
-                                             subject_files=subject_files)
-                error_count += sess_count
-                subject_files = False
-                project_files = False
-
-    elif container.container_type == 'subject':
-        subject_files = True
-        project_files = False
-        for session in container.sessions():
-            sess_count = _export_session(session_id=session.id, project_files=project_files,
-                                         subject_files=subject_files)
-            error_count += sess_count
-            # We only need to copy subject/project files once
-            subject_files = False
+            subj_error_count = _export_subject(subject_obj=subject, project_files=project_files)
+            error_count += subj_error_count
             project_files = False
 
+    elif container.container_type == 'subject':
+        project_files = False
+        error_count = _export_subject(subject_obj=container, project_files=project_files)
+
     elif container.container_type == 'session':
-        error_count = _export_session(session_id=container_id)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sess_template_path = template_path
+            if not export_error_msg and isinstance(df, pd.DataFrame):
+                sess_template_path, export_error_msg = _get_subject_template(subject_obj=container.subject,
+                                                                             directory_path=temp_dir)
+        error_count = _export_session(session_id=container_id, session_template_path=sess_template_path,
+                                      sess_error_msg=export_error_msg)
 
     log.info(f'Export for {container.container_type} {container.id} is complete with {error_count} file export errors')
     return error_count
@@ -489,6 +568,7 @@ if __name__ == '__main__':
     parser.add_argument('--overwrite_files',
                         help='Overwrite existing files in the destination project where present',
                         action='store_true')
+    parser.add_argument('--subject_csv_path', help='path to the subject csv', default=None)
     args = parser.parse_args()
     if args.api_key:
         fw = flywheel.Client(args.api_key)
@@ -507,6 +587,7 @@ if __name__ == '__main__':
         dest_proj_id=dest_project.id,
         template_path=args.template_path,
         csv_output_path=csv_output_path,
-        overwrite=args.overwrite_files
+        overwrite=args.overwrite_files,
+        subject_csv_path=args.subject_csv_path
     )
 

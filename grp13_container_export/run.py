@@ -71,9 +71,15 @@ def parse_args_from_context(gear_context):
         'dest_proj_id': project.id,
         'template_path': template_path,
         'csv_output_path': csv_output_path,
-        'overwrite': overwrite_files
+        'overwrite': overwrite_files,
+        'subject_csv_path': None
     }
 
+    # Check for subject_csv
+    if gear_context.get_input('subject_csv'):
+        subject_csv_path = gear_context.get_input('subject_csv')['location']['path']
+        if os.path.exists(subject_csv_path):
+            export_container_args['subject_csv_path'] = subject_csv_path
     return export_container_args
 
 

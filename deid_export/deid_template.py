@@ -102,6 +102,14 @@ def validate(deid_template_path,
         deid_template = load(fid, Loader=Loader)
 
     df = pd.read_csv(csv_path, dtype=str)
+    if new_subject_code_col != DEFAULT_NEW_SUBJECT_CODE_COL:
+        if new_subject_code_col not in df:
+            raise ValueError(f'columns {new_subject_code_col} is missing from dataframe')
+        else:
+            if new_subject_code_col.startswith('dicom.'):
+                df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
+            else:
+                df.rename({new_subject_code_col: DEFAULT_NEW_SUBJECT_CODE_COL}, axis='columns', inplace=True)
 
     for c in required_cols:
         if c not in df:
@@ -127,10 +135,13 @@ def validate(deid_template_path,
                         log_field_mismatch = False
                 if log_field_mismatch:
                     logger.warning(f'Column `{k}` not found in DeID template')
+
             else:
                 _ = el[key_or_fieldinfo]
         except KeyError:
             logger.warning(f'Column `{k}` not found in DeID template')
+
+    return df
 
 
 def get_updated_template(df,
