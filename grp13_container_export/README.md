@@ -24,7 +24,8 @@ dicom:
   patient-age-from-birthdate: true
   # Set patient age units as Years
   patient-age-units: Y
-
+  # Remove private tags
+  remove-private-tags: true
 
   fields:
     # Remove a dicom field (e.g.remove PatientID)
@@ -173,8 +174,8 @@ The deid_template:
 dicom:
   # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
   date-increment: -10
-  # since example-csv-mapping.csv doesn't define remove_private_tags, all subjects will have private tags removed
-  remove_private_tags: true
+  # # since example-csv-mapping.csv doesn't define dicom.remove-private-tags, all subjects will have private tags removed
+  remove-private-tags: true
   fields:
     - name: PatientBirthDate
       # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
