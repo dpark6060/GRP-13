@@ -481,7 +481,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                         subject_files=False, sess_error_msg=None):
         if sess_error_msg:
             session_obj = fw_client.get_session(session_id)
-            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj)
+            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg)
         else:
             session_df = export_session(
                 fw_client=fw_client,

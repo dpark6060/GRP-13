@@ -162,8 +162,9 @@ def get_updated_template(df,
     """
 
     series = df[df[subject_code_col] == subject_code].squeeze()
+    logger.critical(f'subject series: {series}')
     series.pop(subject_code_col)
-    if series is None:
+    if series.empty:
         raise ValueError(f'{subject_code} not found in csv')
     else:
         new_deid = update_deid_profile(deid_template, series.to_dict())
