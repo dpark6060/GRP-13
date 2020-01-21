@@ -4,6 +4,9 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"
+mock = "*"
 
 [packages]
 flywheel-sdk = "~=10.6.1"
