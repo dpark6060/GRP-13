@@ -9,10 +9,13 @@ log.setLevel('INFO')
 
 
 def get_analysis_parent(fw_client, container_id):
-    """
-    :param fw_client: an instance of the Flywheel client
-    :param container_id: a flywheel analysis container id
-    :return: the container object or None if an exception is raised retrieving the container
+    """Return parent container id of the analysis container provided
+    Args:
+        fw_client (object): An instance of the Flywheel client
+        container_id (str): A flywheel analysis container id
+
+    Returns:
+        str: The container object or None if an exception is raised retrieving the container
     """
     try:
         container = fw_client.get(container_id)
@@ -26,12 +29,17 @@ def get_analysis_parent(fw_client, container_id):
 
 
 def lookup_project(fw_client, project_resolver_path):
-    """
-    Attempts to lookup and return the project at the resolver path. If the path is not for a project or an exception is
-    raised, will return None
-    :param fw_client:
-    :param project_resolver_path:
-    :return: the project at the resolver path
+    """Attempts to lookup and return the project at the resolver path.
+
+    If the path is not for a project or an exception is raised, will return None
+
+    Args:
+        fw_client (object): An instance of the Flywheel client
+        project_resolver_path (str): Path to project
+
+    Returns:
+        dict: The project at the resolver path
+
     """
     try:
         project = fw_client.lookup(project_resolver_path)

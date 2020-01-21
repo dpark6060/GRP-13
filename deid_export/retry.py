@@ -21,10 +21,15 @@ class RetryException(Exception):
 
 def retry(max_retry=5):
     """
-    :param func: The function that needs to be retry
-    :param max_retry: Maximum retry of `func` function, default is `5`
-    :return: func
-    :raise: RetryException if retries exceeded than max_retry
+    Args:
+        func: The function that needs to be retry
+        max_retry (int): Maximum retry of `func` function, default is `5`
+
+    Returns:
+        func: the function to be retry
+
+    Raises:
+        RetryException: if retries exceeded than max_retry
     """
     def decorator_wrapper(func):
         @functools.wraps(func)

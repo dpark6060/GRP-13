@@ -79,10 +79,12 @@ def validate(deid_template_path,
     """Validate consistency of the deid template profile and a dataframe
 
     Checks that:
-    - df contains some required columns
-    - the subject code columns have unique values
+
+    * df contains some required columns
+    * the subject code columns have unique values
+
     Logs warning if:
-    -  columns of dataframe does not match deid profile template
+    *  columns of dataframe does not match deid profile template
 
     Args:
         deid_template_path (Path-like): Path to Deid template .yml profile

@@ -20,11 +20,14 @@ log = logging.getLogger(__name__)
 
 
 def extract_files(zip_path, output_directory):
-    """
-    extracts the files in a zip to an output directory
-    :param zip_path: path to the zip to extract
-    :param output_directory: directory to which to extract the files
-    :return: file_list, a list to the paths of the extracted files and comment, the archive comment
+    """Extracts the files in a zip to an output directory
+
+    Args:
+        zip_path (str): Path to the zip to extract
+        output_directory (str): directory to which to extract the files
+
+    Returns:
+        list: A list to the paths of the extracted files and comment, the archive comment
     """
     with zipfile.ZipFile(zip_path, 'r') as zipf:
         zipf.extractall(output_directory)
@@ -37,15 +40,20 @@ def extract_files(zip_path, output_directory):
 
 
 def recreate_zip(dest_zip, file_directory, output_directory=None):
-    """
+    """Return path to resultant zip given dest_zip and file_directory
+
     Given a dest_zip and file_directory that contains extracted(modified) files from dest_zip,
     this function will replace dest_zip with a zip that contains files from file_directory that
     match the original zip's filename. If output_directory is provided, the resulting zip will be saved to
     output_directory rather than overwriting dest_zip.
-    :param dest_zip: path to the zip archive to be modified
-    :param file_directory: path to the directory that contains files to replace those in dest_zip
-    :param output_directory: directory to which to save output zip, if None, will overwrite dest_zip
-    :return: output_path, a path to the resultant zip
+
+    Args:
+        dest_zip (str): Path to the zip archive to be modified
+        file_directory (str): Path to the directory that contains files to replace those in dest_zip
+        output_directory (str): Directory to which to save output zip, if None, will overwrite dest_zip
+
+    Returns:
+        (str): A path to the resultant zip
     """
     # temporary directory context
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -78,12 +86,13 @@ def recreate_zip(dest_zip, file_directory, output_directory=None):
 
 
 def parse_deid_template(template_filepath):
-    """
-    Load the de-identification profile at template_filepath
-    :param template_filepath: path to the de-identification template
-    :type template_filepath: str
-    :return: profile
-    :rtype: dict
+    """Load the de-identification profile at template_filepath
+
+    Args:
+        template_filepath (str): Path to the de-identification template
+
+    Returns:
+        dict: Profile
     """
     _, ext = os.path.splitext(template_filepath.lower())
 
@@ -105,13 +114,14 @@ def parse_deid_template(template_filepath):
 
 
 def load_dicom_deid_profile(template_filepath):
-    """
-    Instantiates an instance of flywheel_migration.deidentify.dicom_file_profile.DicomFileProfile,
+    """Instantiates an instance of flywheel_migration.deidentify.dicom_file_profile.DicomFileProfile,
     given a path to a de-identification template
-    :param template_filepath: the path to the YAML/JSON deidentification profile
-    :type template_filepath: str
-    :return: dicom_deid_profile
-    :rtype: flywheel_migration.deidentify.dicom_file_profile.DicomFileProfile
+
+    Args:
+        template_filepath (str): the path to the YAML/JSON deidentification profile
+
+    Returns:
+        object: A flywheel_migration.deidentify.dicom_file_profile.DicomFileProfile instance
     """
 
     deid_profile = parse_deid_template(template_filepath)
@@ -120,12 +130,15 @@ def load_dicom_deid_profile(template_filepath):
 
 
 def return_diff_files(original_dir, modified_dir):
-    """
-    Recursively compares files between two directories using filecmp.dircmp and returns a list of
+    """Recursively compares files between two directories using filecmp.dircmp and returns a list of
     files that differ (including subdirectory
-    :param original_dir: path to the original directory
-    :param modified_dir: path to the modified directory
-    :return: diff_files
+
+    Args:
+        original_dir (str): Path to the original directory
+        modified_dir (str): Path to the modified directory
+
+    Returns:
+        list: List of paths
     """
     diff_files = list()
     dir_compared = filecmp.dircmp(original_dir, modified_dir)
@@ -145,15 +158,19 @@ def deidentify_files(profile_path, input_directory, profile_name='dicom', file_l
     replaces original files with de-identified copies of DICOM files .
     Returns a list of paths to the deidentified files. If no changes were imposed by the profile,
     no files will be modified
-    :param profile_path: path to the de-id profile to apply
-    :param input_directory: directory containing the dicoms to be de-identified
-    :param profile_name: name of the profile to pass .get_file_profile()
-    :param output_directory: directory to which to save de-identified files. If not provided, originals will be replaced
-    :param date_increment: date offset to apply to the profile
-    :param file_list: optional list of relative paths of files to process, if not provided,
-    will work on all files in the input_directory
-    :return: deid_paths, list of paths to deidentified files or None if no files are de-identified
-    :rtype: list
+
+    Args:
+        profile_path (str): Path to the de-id profile to apply
+        input_directory (str): Directory containing the dicoms to be de-identified
+        profile_name (str): Name of the profile to pass .get_file_profile()
+        output_directory (str): Directory to which to save de-identified files. If not provided, originals will be
+            replaced
+        date_increment (str): Date offset to apply to the profile
+        file_list (list, optional): Optional list of relative paths of files to process, if not provided, will work
+            on all files in the input_directory
+
+    Returns:
+        list: list of paths to deidentified files or None if no files are de-identified
     """
     with tempfile.TemporaryDirectory() as tmp_deid_dir:
         # Load the de-id profile from a file
