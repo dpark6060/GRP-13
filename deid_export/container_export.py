@@ -467,7 +467,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                      subject_csv_path=None, new_code_col=deid_template.DEFAULT_NEW_SUBJECT_CODE_COL,
                      old_code_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
     container = fw_client.get(container_id).reload()
-    export_error_msg = None
+
     template_obj = None
     df = None
     error_count = 0
@@ -513,11 +513,11 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             log.error(error_msg, exc_info=True)
         return subj_template_path, error_msg
 
-    def _export_subject(subject_obj, subj_error_msg=None, project_files=False):
+    def _export_subject(subject_obj, project_files=False):
         subject_error_count = 0
         with tempfile.TemporaryDirectory() as temp_dir:
             subj_template_path = template_path
-            if not subj_error_msg and isinstance(df, pd.DataFrame):
+            if isinstance(df, pd.DataFrame):
                 subj_template_path, subj_error_msg = _get_subject_template(subject_obj=subject_obj,
                                                                            directory_path=temp_dir)
             subject_files = True
@@ -547,11 +547,11 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
     elif container.container_type == 'session':
         with tempfile.TemporaryDirectory() as temp_dir:
             sess_template_path = template_path
-            if not export_error_msg and isinstance(df, pd.DataFrame):
-                sess_template_path, export_error_msg = _get_subject_template(subject_obj=container.subject,
-                                                                             directory_path=temp_dir)
+            if isinstance(df, pd.DataFrame):
+                sess_template_path, session_export_error = _get_subject_template(subject_obj=container.subject,
+                                                                                 directory_path=temp_dir)
         error_count = _export_session(session_id=container_id, session_template_path=sess_template_path,
-                                      sess_error_msg=export_error_msg)
+                                      sess_error_msg=session_export_error)
 
     log.info(f'Export for {container.container_type} {container.id} is complete with {error_count} file export errors')
     return error_count
