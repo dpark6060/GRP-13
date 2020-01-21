@@ -64,12 +64,13 @@ def get_api_key_from_client(fw_client):
 
 
 def quote_numeric_string(input_str):
-    """
-    Wraps a numeric string in double quotes. Attempts to coerce non-str to str and logs a warning.
-    :param input_str: string to be modified (if numeric string - matches ^[\d]+$)
-    :type input_str: str
-    :return: output_str, a numeric string wrapped in quotes if input_str is numeric, or str(input_str)
-    :rtype str
+    """Wraps a numeric string in double quotes. Attempts to coerce non-str to str and logs a warning.
+
+    Args:
+        input_str (str): string to be modified (if numeric string - matches ^[\d]+$)
+
+    Returns:
+        str: A numeric string wrapped in quotes if input_str is numeric, or str(input_str)
     """
 
     if not isinstance(input_str, str):

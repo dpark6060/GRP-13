@@ -36,10 +36,8 @@ def get_job_state_from_logs(job_log_obj,
                             job_details=None,
                             current_time=datetime.datetime.now(datetime.timezone.utc),
                             max_seconds=500):
-    """
-    Parses job log to get information about state, leveraging log timestamps
+    """Parses job log to get information about state, leveraging log timestamps
     (configured to be UTC for grp-13-deid-file)
-    :return:
     """
     # If job details were provided, get the state from them
     if isinstance(job_details, flywheel.models.job_detail.JobDetail):
