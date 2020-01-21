@@ -40,7 +40,7 @@
         "flywheel-migration": {
             "editable": true,
             "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
-            "ref": "7cddad5add6c3d5143050807e45ebebae51b3373"
+            "ref": "e99ad2d8959a261b56f6162aa2171825a9907a2a"
         },
         "flywheel-sdk": {
             "hashes": [
