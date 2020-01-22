@@ -24,7 +24,8 @@ dicom:
   patient-age-from-birthdate: true
   # Set patient age units as Years
   patient-age-units: Y
-
+  # Remove private tags
+  remove-private-tags: true
 
   fields:
     # Remove a dicom field (e.g.remove PatientID)
@@ -127,21 +128,135 @@ META_WHITELIST_DICT = {
     'session': ['age', 'operator', 'timestamp', 'timezone', 'uid', 'weight']
 }
 ```
+
+### subject_csv (optional)
+The subject_csv facilitates subject-specific configuration of 
+de-identification templates. This is a csv file that contains the column
+`subject.code` with unique values correspond to the subject.code 
+values in the project to be exported. If a subject in the project to be 
+exported is not listed in `subject.code` in the provided subject_csv 
+this subject will not be exported. 
+
+#### Subject-level customization with subject_csv and deid_template
+
+Requirements:
+* To update subject fields, the fields must both be represented in the 
+subject_csv and deid_template files. 
+* If a field is represented in both the deid_template and the 
+subject_csv, the value in the deid_template will be replaced with the 
+value listed in the corresponding column of the subject_csv for each
+subject that has a code listed in subject.code.
+* Fields represented in the deid_template but not the subject_csv will 
+be the same for all subjects. 
+* subject.code can be modified by including an export.subject.code
+column in subject_csv that contains unique values to be applied to 
+subjects in the destination project.
+* **NOTE: If you would also like to 
+change the value of the DICOM header PatientID, you must provide a 
+matching `dicom.fields.PatientID.replace-with` column** 
+* Conversely, `dicom.fields.PatientID.replace-with` will not modify 
+subject.code, a corresponding `export.subject.code` column must also 
+be provided to modify the subject.code values
+
+Let's walk through an example pairing of subject_csv and deid_template
+to illustrate. 
+
+The following table represents subject_csv (../tests/data/example-csv-mapping.csv):
+
+|subject.code|dicom.date-increment|export.subject.code|dicom.fields.PatientID.replace-with|dicom.fields.PatientBirthDate.remove|
+|------------|--------------------|-------------------|-----------------------------------|------------------------------------|
+|001         |-15                 |Patient_IDA        |IDA                                |false                               |
+|002         |-20                 |Patient_IDB        |IDB                                |true                                |
+|003         |-30                 |Patient_IDC        |IDC                                |true                                |
+
+The deid_template:
+``` yaml
+dicom:
+  # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
+  date-increment: -10
+  # # since example-csv-mapping.csv doesn't define dicom.remove-private-tags, all subjects will have private tags removed
+  remove-private-tags: true
+  fields:
+    - name: PatientBirthDate
+      # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
+      remove: true
+    - name: PatientID
+      # replace-with can be any string value since dicom.fields.PatientID.replace-with defined in example-csv-mapping.csv
+      replace-with: FLYWHEEL
+export:
+  session:
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - operator
+        - weight
+  subject:
+    # code can be any string value since export.subject.code is defined in example-csv-mapping.csv
+    code: FLYWHEEL
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - sex
+        - strain
+```
+The resulting template for subject 003 given the above would be: 
+The deid_template:
+``` yaml
+dicom:
+  # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
+  date-increment: -30
+  remove_private_tags: true
+  fields:
+    - name: PatientBirthDate
+      remove: true
+    - name: PatientID
+      replace-with: Patient_IDC 
+export:
+  session:
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - operator
+        - weight
+  subject:
+    # code can be any string value since export.subject.code is defined in example-csv-mapping.csv
+    code: Patient_IDC
+    whitelist:
+      info:
+        - cats
+      metadata:
+        - sex
+        - strain
+```
+
 ### Manifest JSON for inputs
 ``` json
 "inputs": {
     "api-key": {
-        "base": "api-key"
+      "base": "api-key"
     },
     "deid_template": {
-        "base": "file",
-        "description": "A Flywheel de-identification template specifying the de-identification actions to perform on input_file",
-        "optional": false,
-        "type": {
-            "enum": [
-                "source code"
-            ]
-        }
+      "base": "file",
+      "description": "A Flywheel de-identification template specifying the de-identification actions to perform.",
+      "optional": false,
+      "type": {
+        "enum": [
+          "source code"
+        ]
+      }
+    },
+    "subject_csv": {
+      "base": "file",
+      "description": "A CSV file that contains mapping values to apply for subjects during de-identification.",
+      "optional": true,
+      "type": {
+        "enum": [
+          "source code"
+        ]
+      }
     }
 }
 ```
@@ -199,10 +314,6 @@ level and provides the following:
         * an optional csv that contains a column that maps to a
         Flywheel session or subject metadata field and columns that
         specify values with which to replace DICOM header tags
-        (proposed, not implemented)
-        * if the above is provided, a mapping template YAML file must
-        also be provided to map the csv columns to Flywheel (similar to
-        query portion of GRP-5 template)
     * Configuration options:
         * The group_id/project name for the project to which to export
         anonymized files

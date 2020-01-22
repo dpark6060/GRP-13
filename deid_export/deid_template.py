@@ -93,6 +93,9 @@ def validate(deid_template_path,
 
     Raises:
         ValueError: When checks do not pass
+
+    Returns:
+        (pandas.DataFrame): a DataFrame generated from parsing of the CSV at csv_path
     """
 
     if required_cols is None:
@@ -102,7 +105,11 @@ def validate(deid_template_path,
         deid_template = load(fid, Loader=Loader)
 
     df = pd.read_csv(csv_path, dtype=str)
-
+    if new_subject_code_col != DEFAULT_NEW_SUBJECT_CODE_COL:
+        if new_subject_code_col not in df:
+            raise ValueError(f'columns {new_subject_code_col} is missing from dataframe')
+        else:
+            df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
     for c in required_cols:
         if c not in df:
             raise ValueError(f'columns {c} is missing from dataframe')
@@ -127,10 +134,13 @@ def validate(deid_template_path,
                         log_field_mismatch = False
                 if log_field_mismatch:
                     logger.warning(f'Column `{k}` not found in DeID template')
+
             else:
                 _ = el[key_or_fieldinfo]
         except KeyError:
             logger.warning(f'Column `{k}` not found in DeID template')
+
+    return df
 
 
 def get_updated_template(df,
@@ -142,6 +152,7 @@ def get_updated_template(df,
 
     Args:
         df (pandas.DataFrame): Dataframe representation of some mapping info
+        subject_code (str): value matching subject_code_col in row used to update the template
         deid_template (dict): Dictionary representation of the deid profile
         subject_code_col (str): Subject code column name
         dest_template_path (Path-like): Path to output DeID profile
@@ -151,8 +162,9 @@ def get_updated_template(df,
     """
 
     series = df[df[subject_code_col] == subject_code].squeeze()
+    logger.critical(f'subject series: {series}')
     series.pop(subject_code_col)
-    if series is None:
+    if series.empty:
         raise ValueError(f'{subject_code} not found in csv')
     else:
         new_deid = update_deid_profile(deid_template, series.to_dict())

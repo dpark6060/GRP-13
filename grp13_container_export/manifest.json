@@ -7,11 +7,11 @@
   "license": "Other",
   "source": "https://github.com/flywheel-apps/GRP-13",
   "url": "https://github.com/flywheel-apps/GRP-13/blob/master/grp13_container_export/README.md",
-  "version": "0.0.2",
+  "version": "0.2.0.000",
   "custom": {
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/grp-13:0.0.0"
+      "image": "flywheel/grp-13:0.2.0"
     }
   },
   "inputs": {
@@ -28,15 +28,16 @@
         ]
       }
     },
-    "csv_mapping": {
+    "subject_csv": {
       "base": "file",
-      "description": "A CSV file that contains mapping values used during de-identification.",
+      "description": "A CSV file that contains mapping values to apply for subjects during de-identification.",
       "optional": true,
       "type": {
         "enum": [
           "source code"
         ]
       }
+    }
   },
   "config": {
     "project_path": {
