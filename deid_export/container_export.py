@@ -123,6 +123,18 @@ def create_metadata_dict(origin_container, container_config=None):
 
 
 def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
+    """
+    Searches the destination project for a subject with code matching origin_subject.code (or 'code' from subject_config
+        if provided). If found, the subject metadata is updated to match the whitelisted metadata of origin_subject.
+        Otherwise, a new subject is created with metadata matching the whitelisted metadata for origin_subject.
+    Args:
+        origin_subject (flywheel.Subject): the subject to export
+        dest_proj(flywheel.Project): the project in which to search/create the subject
+        subject_config (dict): a dictionary specifying metadata whitelists and a new subject code to use
+
+    Returns:
+        (flywheel.Subject): the found or created subject in dest_proj
+    """
     origin_subject = origin_subject.reload()
     dest_proj = dest_proj.reload()
     if not subject_config:
