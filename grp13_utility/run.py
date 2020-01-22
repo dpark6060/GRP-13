@@ -26,10 +26,13 @@ def create_gear_logger(log_level, log_name):
 
 
 def ensure_filename_safety(filename):
-    """
-    A function for removing characters that are not alphanumeric, '.', '-', or '_' from an input string.
-    :param filename: an input string
-    :return: safe_filename, a string without characters that are not alphanumeric, '.', '-', or '_'
+    """A function for removing characters that are not alphanumeric, '.', '-', or '_' from an input string.
+
+    Args:
+        filename (str): an input string
+
+    Returns:
+        str: A string without characters that are not alphanumeric, '.', '-', or '_'
     """
     safe_filename = re.sub(r'[^A-Za-z0-9\-\_\.]+', '', filename)
     if filename != safe_filename:

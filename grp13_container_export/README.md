@@ -92,42 +92,49 @@ propagation where `info` is specifically for container.info fields and
 `metadata` is a list for metadata that appear flat on the container
 for example, subject.sex. This is demonstrated below:
 
-``` yaml
-dicom:
-  fields:
-    - name: PatientBirthDate
-      remove: true
-export:
-  session:
-    whitelist:
-      info:
-        - cats
-      metadata:
-        - operator
-        - weight
-  subject:
-    whitelist:
-      info:
-        - cats
-      metadata:
-        - sex
-        - strain
-```
-With the above template subject.info.cats, subject.sex, subject.strain,
-session.info.cats, session.operator and session.weight would be
-propagated to the exported containers.
+    ``` yaml
+    dicom:
+      fields:
+        - name: PatientBirthDate
+          remove: true
+    export:
+      session:
+        whitelist:
+          info:
+            - cats
+          metadata:
+            - operator
+            - weight
+      subject:
+        whitelist:
+          info:
+            - cats
+          metadata:
+            - sex
+            - strain
+      acquisition: 
+        whitelist:
+          info: all
+          metadata:all 
+    ```
+    With the above template subject.info.cats, subject.sex, subject.strain,
+    session.info.cats, session.operator, session.weight, all 
+    acquisition.info fields, and all editable acquisition metadata would 
+    be propagated to the exported containers.
+    
+    _NOTE:_ metadata fields that can be propagated are defined by the dictionary
+    below which reflects container metadata outside of info that can be
+    updated via the SDK:
 
-_NOTE:_ metadata fields that can be propagated are defined by the dictionary
-below which reflects container metadata outside of info that can be
-updated via the SDK:
-
-``` python
-META_WHITELIST_DICT = {
-    'acquisition': ['timestamp', 'timezone', 'uid'],
-    'subject': ['firstname', 'lastname', 'sex', 'cohort', 'ethnicity', 'race', 'species', 'strain'],
-    'session': ['age', 'operator', 'timestamp', 'timezone', 'uid', 'weight']
-}
-```
+    ``` python
+    META_WHITELIST_DICT = {
+        'acquisition': ['timestamp', 'timezone', 'uid'],
+        'subject': ['firstname', 'lastname', 'sex', 'cohort', 'ethnicity', 'race', 'species', 'strain'],
+        'session': ['age', 'operator', 'timestamp', 'timezone', 'uid', 'weight']
+    }
+    ```
+    
+   
 
 ### subject_csv (optional)
 The subject_csv facilitates subject-specific configuration of 
