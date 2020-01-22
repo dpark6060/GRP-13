@@ -115,7 +115,7 @@ for example, subject.sex. This is demonstrated below:
       acquisition: 
         whitelist:
           info: all
-          metadata:all 
+          metadata: all 
     ```
     With the above template subject.info.cats, subject.sex, subject.strain,
     session.info.cats, session.operator, session.weight, all 
