@@ -93,6 +93,9 @@ def validate(deid_template_path,
 
     Raises:
         ValueError: When checks do not pass
+
+    Returns:
+        (pandas.DataFrame): a DataFrame generated from parsing of the CSV at csv_path
     """
 
     if required_cols is None:
@@ -149,6 +152,7 @@ def get_updated_template(df,
 
     Args:
         df (pandas.DataFrame): Dataframe representation of some mapping info
+        subject_code (str): value matching subject_code_col in row used to update the template
         deid_template (dict): Dictionary representation of the deid profile
         subject_code_col (str): Subject code column name
         dest_template_path (Path-like): Path to output DeID profile
