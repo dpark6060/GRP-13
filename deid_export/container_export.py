@@ -31,15 +31,32 @@ log.setLevel('INFO')
 
 
 def hash_string(input_str):
+    """
+    Hashes an input string using sha1
+    Args:
+        input_str (str): a string to be hashed
+
+    Returns:
+        (str): the output of sha1 hashing on the hexdigest of input_str
+    """
     output_hash = hashlib.sha1(input_str.encode()).hexdigest()
     return output_hash
 
 
 def load_template_file(template_file_path):
-    """Load the de-identification template at template_file_path"""
+    """
+    Determines whether the file at template_file_path is JSON or YAML and returns the Python dictionary representation
+    Args:
+        template_file_path (str): path to the JSON or YAML file
+    Raises:
+        ValueError: when fails to load the template
+    Returns:
+        (dict): dictionary representation of the the template file
+
+    """
     _, ext = os.path.splitext(template_file_path.lower())
 
-    config = None
+    template = None
     try:
         if ext == '.json':
             with open(template_file_path, 'r') as f:
@@ -51,11 +68,19 @@ def load_template_file(template_file_path):
     except ValueError:
         log.exception(f'Unable to load template at: {template_file_path}')
 
-    if not config:
+    if not template:
         raise ValueError(f'Could not load template at: {template_file_path}')
 
 
 def get_api_key_from_client(fw_client):
+    """
+    Parses the api key from an instance of the flywheel client
+    Args:
+        fw_client (flywheel.Client): an instance of the flywheel client
+
+    Returns:
+        (str): the api key
+    """
     site_url = fw_client.get_config().site.get('api_url').rsplit(':', maxsplit=1)[0]
     site_url = site_url.rsplit('/', maxsplit=1)[1]
     key_string = fw_client.get_current_user().api_key.key
@@ -158,7 +183,7 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
     Args:
         origin_subject (flywheel.Subject): the subject to export
         dest_proj(flywheel.Project): the project in which to search/create the subject
-        subject_config (dict): a dictionary specifying metadata whitelists and a new subject code to use
+        subject_config (dict): an optional dictionary specifying metadata whitelists and a new subject code to use
 
     Returns:
         (flywheel.Subject): the found or created subject in dest_proj
@@ -173,7 +198,7 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
     # Since subject code must be unique within a project, we do not need to search by info.export.origin_id
     dest_subject = dest_proj.subjects.find_first(f'code={query_code}')
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_subject, subject_config)
+    meta_dict = create_metadata_dict(origin_subject, 'subject', subject_config)
 
     if not dest_subject:
         log.debug(f'Creating destination subject for ({origin_subject.id})')
@@ -191,6 +216,19 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
 
 
 def find_or_create_subject_session(origin_session, dest_subject, session_config=None):
+    """
+    Searches the destination subject (dest_subject) for a session with with label matching origin_session.label
+        (or 'label' from session_config, if provided) and info.export.origin_id = hash_string(origin_session.id)
+        If found, the destination session metadata is updated to match the whitelisted metadata of origin_session.
+        Otherwise, a new subject is created with metadata matching the whitelisted metadata for origin_session.
+    Args:
+        origin_session (flywheel.Session): the session to be exported
+        dest_subject (flywheel.Subject): the subject to which to export the session
+        session_config (dict): an optional dictionary specifying metadata whitelists and a new session label to use
+
+    Returns:
+        (flywheel.Session): the found or created session in dest_subject
+    """
     origin_session = origin_session.reload()
     dest_subject = dest_subject.reload()
     if not session_config:
@@ -202,11 +240,9 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
     )
     dest_session = dest_subject.sessions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_session, session_config)
+    meta_dict = create_metadata_dict(origin_session, 'session', session_config)
     if not dest_session:
         log.debug(f'Creating destination session for ({origin_session.id})')
-        # Copy over metadata as specified
-        meta_dict = create_metadata_dict(origin_session, session_config)
         # Add session to subject
         dest_session = dest_subject.add_session(label=new_label, **meta_dict)
     else:
@@ -217,6 +253,21 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
 
 
 def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisition_config=None):
+    """
+    Searches the destination session (dest_session) for an acquisition with label matching origin_acquisition.label
+        (or 'label' from acquisition_config, if provided) and info.export.origin_id = hash_string(origin_acquisition.id)
+        If found, the destination acquisition metadata is updated to match the whitelisted metadata of
+        origin_acquisition. Otherwise, a new subject is created with metadata matching the whitelisted metadata for
+        origin_acquisition.
+    Args:
+        origin_acquisition (flywheel.Acquisition): the acquisition to be exported
+        dest_session (flywheel.Session): the session to which to export the acquisition
+        acquisition_config (dict): an optional dictionary specifying metadata whitelists and a new acquisition
+            label to use
+
+    Returns:
+        (flywheel.Acquisition): the found or created acquisition in dest_session
+    """
     origin_acquisition = origin_acquisition.reload()
     dest_session = dest_session.reload()
     if not acquisition_config:
@@ -227,11 +278,10 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
     )
     dest_acquisition = dest_session.acquisitions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_acquisition, acquisition_config)
+    meta_dict = create_metadata_dict(origin_acquisition, 'acquisition', acquisition_config)
     if not dest_acquisition:
         log.debug(f'Creating destination acquisition for ({origin_acquisition.id})')
-        # Copy over metadata as specified
-        meta_dict = create_metadata_dict(origin_acquisition, acquisition_config)
+
         # Add acquisition to session
         dest_acquisition = dest_session.add_acquisition(label=origin_acquisition.label, **meta_dict)
     else:
@@ -241,12 +291,22 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
     return dest_acquisition
 
 
-def initialize_container_file_export(fw_client,
-                                     origin_container,
-                                     dest_container,
-                                     filename_dict,
-                                     filetype_list,
+def initialize_container_file_export(fw_client, origin_container, dest_container, filename_dict, filetype_list,
                                      overwrite=False):
+    """
+    Initializes a list of FileExporter objects for the origin_container/dest_container combination
+
+    Args:
+        fw_client (fw.Client): an instance of the flywheel client
+        origin_container (flywheel.<Container>): the container with files to be exported
+        dest_container (flywheel.<Container>): the container to which files are to be exported
+        filename_dict (dict): dictionary with <current filename> <new filename> key-value pairs
+        filetype_list (list): list of filetypes to be exported
+        overwrite (bool): whether to overwrite files that currently exist in dest_container
+
+    Returns:
+        (list): list of FileExporter objects
+    """
     file_exporter_list = list()
     for container_file in origin_container.files:
         export_filename = filename_dict.get(container_file.name, None)
@@ -266,6 +326,18 @@ def initialize_container_file_export(fw_client,
 
 
 def local_file_export(api_key, file_exporter_dict, template_path, overwrite=False):
+    """
+    Instantiates a flywheel client and  de-identifies/anonymizes files according to the de-identification template at
+    template_path
+    Args:
+        api_key (str): api key for the flywheel client
+        file_exporter_dict (dict): dictionary representing the FileExporter status
+        template_path (str): path to a de-identification template
+        overwrite (bool): whether to overwrite files at the destination upon collision
+
+    Returns:
+        (dict): dictionary representing the status of the FileExporter after attempted de-identification
+    """
     fw_client = flywheel.Client(api_key, skip_version_check=True)
     file_exporter = FileExporter(
         fw_client=fw_client,
@@ -277,6 +349,7 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
     )
     if file_exporter.state != 'error':
         file_exporter.local_deid_export(template_path=template_path)
+    # wait for file to export
     time.sleep(2)
     status_dict = file_exporter.get_status_dict()
     del file_exporter
