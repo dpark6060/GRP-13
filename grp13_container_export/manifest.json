@@ -7,7 +7,7 @@
   "license": "Other",
   "source": "https://github.com/flywheel-apps/GRP-13",
   "url": "https://github.com/flywheel-apps/GRP-13/blob/master/grp13_container_export/README.md",
-  "version": "0.2.0.000",
+  "version": "0.2.0",
   "custom": {
     "gear-builder": {
       "category": "analysis",
