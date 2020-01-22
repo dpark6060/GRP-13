@@ -106,11 +106,7 @@ def validate(deid_template_path,
         if new_subject_code_col not in df:
             raise ValueError(f'columns {new_subject_code_col} is missing from dataframe')
         else:
-            if new_subject_code_col.startswith('dicom.'):
-                df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
-            else:
-                df.rename({new_subject_code_col: DEFAULT_NEW_SUBJECT_CODE_COL}, axis='columns', inplace=True)
-
+            df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
     for c in required_cols:
         if c not in df:
             raise ValueError(f'columns {c} is missing from dataframe')
