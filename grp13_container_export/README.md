@@ -140,8 +140,8 @@ this subject will not be exported.
 #### Subject-level customization with subject_csv and deid_template
 
 Requirements:
-* When providing a field to de-identify/anonymize, the field must both be 
-represented in the subject_csv and deid_template files. 
+* To update subject fields, the fields must both be represented in the 
+subject_csv and deid_template files. 
 * If a field is represented in both the deid_template and the 
 subject_csv, the value in the deid_template will be replaced with the 
 value listed in the corresponding column of the subject_csv for each
