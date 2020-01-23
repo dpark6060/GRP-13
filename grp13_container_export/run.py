@@ -108,4 +108,4 @@ if __name__ == '__main__':
     with flywheel.GearContext() as gear_context:
         exit_status = main(gear_context)
     log.info(f'exit_status is {exit_status}')
-    os.sys.exit(exit_status)
+    os._exit(exit_status)
