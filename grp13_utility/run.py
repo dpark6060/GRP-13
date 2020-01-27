@@ -148,5 +148,5 @@ if __name__ == '__main__':
 
     log.info(f'Exit status is {exit_status}')
     log.info(f'Exit time::{datetime.datetime.now(datetime.timezone.utc)}')
-    os.sys.exit(exit_status)
+    os._exit(exit_status)
 
