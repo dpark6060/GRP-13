@@ -107,11 +107,19 @@ def validate(deid_template_path,
         deid_template = load(fid, Loader=Loader)
 
     df = pd.read_csv(csv_path, dtype=str)
-    if new_subject_code_col != DEFAULT_NEW_SUBJECT_CODE_COL:
-        if new_subject_code_col not in df:
-            raise ValueError(f'columns {new_subject_code_col} is missing from dataframe')
+    if new_subject_code_col not in df:
+        if 'dicom.fields.PatientID.replace-with' in df:
+            if not df['dicom.fields.PatientID.replace-with'].is_unique:
+                raise ValueError('"dicom.fields.PatientID.replace-with" is not unique in dataframe')
+
+            df[new_subject_code_col] = df['dicom.fields.PatientID.replace-with']
         else:
-            df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
+            raise ValueError(f'columns {new_subject_code_col} is missing from dataframe')
+    if new_subject_code_col != DEFAULT_NEW_SUBJECT_CODE_COL:
+        df[DEFAULT_NEW_SUBJECT_CODE_COL] = df[new_subject_code_col]
+    if 'dicom.fields.PatientID.replace-with' in df:
+        df['dicom.fields.PatientID.replace-with'] = df[new_subject_code_col]
+
     for c in required_cols:
         if c not in df:
             raise ValueError(f'columns {c} is missing from dataframe')
