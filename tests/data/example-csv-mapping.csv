@@ -1,4 +1,4 @@
 subject.code,dicom.date-increment,dicom.fields.PatientID.replace-with,dicom.fields.PatientBirthDate.remove
-1,-15,IDA,FALSE
-2,-20,IDB,TRUE
-3,-30,IDC,TRUE
+001,-15,IDA,FALSE
+002,-20,IDB,TRUE
+003,-30,IDC,TRUE
