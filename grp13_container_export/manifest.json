@@ -11,7 +11,7 @@
   "custom": {
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/grp-13:0.2.0"
+      "image": "flywheel/grp-13:0.2.1"
     }
   },
   "inputs": {
