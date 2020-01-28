@@ -80,6 +80,6 @@ def test_process_csv():
         with open(res['001'], 'r') as fid:
             profile = yaml.load(fid, Loader=yaml.SafeLoader)
             assert profile['dicom']['fields'][1]['replace-with'] == 'IDA'
-            assert profile['export']['subject']['code'] == 'Patient_IDA'
+            assert profile['export']['subject']['code'] == 'FLYWHEEL'
             assert profile['dicom']['date-increment'] == -15
             assert profile['dicom']['fields'][0]['remove'] is True
