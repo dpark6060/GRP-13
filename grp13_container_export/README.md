@@ -158,23 +158,24 @@ be the same for all subjects.
 * subject.code can be modified by including an export.subject.code
 column in subject_csv that contains unique values to be applied to 
 subjects in the destination project.
-* **NOTE: If you would also like to 
-change the value of the DICOM header PatientID, you must provide a 
-matching `dicom.fields.PatientID.replace-with` column** 
-* Conversely, `dicom.fields.PatientID.replace-with` will not modify 
-subject.code, a corresponding `export.subject.code` column must also 
-be provided to modify the subject.code values
+* **NOTE: If `dicom.fields.PatientID.replace-with` is provided without 
+`export.subject.code`, `dicom.fields.PatientID.replace-with` will be 
+used to set subject.code for destination subjects. If 
+`export.subject.code` is provided, then it `export.subject.code` will be 
+used to set subject.code for destination subjects. 
+`dicom.fields.PatientID.replace-with` is required to set PatientID in
+DICOM files on a subject-to-subject basis** 
 
 Let's walk through an example pairing of subject_csv and deid_template
 to illustrate. 
 
 The following table represents subject_csv (../tests/data/example-csv-mapping.csv):
 
-|subject.code|dicom.date-increment|export.subject.code|dicom.fields.PatientID.replace-with|dicom.fields.PatientBirthDate.remove|
-|------------|--------------------|-------------------|-----------------------------------|------------------------------------|
-|001         |-15                 |Patient_IDA        |IDA                                |false                               |
-|002         |-20                 |Patient_IDB        |IDB                                |true                                |
-|003         |-30                 |Patient_IDC        |IDC                                |true                                |
+|subject.code|dicom.date-increment|dicom.fields.PatientID.replace-with|dicom.fields.PatientBirthDate.remove|
+|------------|--------------------|-----------------------------------|------------------------------------|
+|001         |-15                 |Patient_IDA                        |false                               |
+|002         |-20                 |Patient_IDB                        |true                                |
+|003         |-30                 |Patient_IDC                        |true                                |
 
 The deid_template:
 ``` yaml
@@ -188,7 +189,7 @@ dicom:
       # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
       remove: true
     - name: PatientID
-      # replace-with can be any string value since dicom.fields.PatientID.replace-with defined in example-csv-mapping.csv
+      # replace-with can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
       replace-with: FLYWHEEL
 export:
   session:
@@ -199,7 +200,7 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since export.subject.code is defined in example-csv-mapping.csv
+    # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
     code: FLYWHEEL
     whitelist:
       info:
