@@ -178,7 +178,7 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     Args:
         origin_subject (flywheel.Subject): the subject to export
         dest_proj(flywheel.Project): the project in which to search/create the subject
-        subject_config (dict): an optional dictionary specifying metadata whitelists and a new subject code to use
+        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
 
     Returns:
         (flywheel.Subject): the found or created subject in dest_proj
@@ -187,7 +187,7 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     dest_proj = dest_proj.reload()
     if not export_config:
         export_config = {'subject': {}}
-    subject_config = export_config.get('subject')
+    subject_config = export_config.get('subject', {})
     new_code = subject_config.get('code', origin_subject.code)
     query_code = quote_numeric_string(new_code)
 
@@ -229,7 +229,7 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
     dest_subject = dest_subject.reload()
     if not export_config:
         export_config = {'session': {}}
-    session_config = export_config.get('session')
+    session_config = export_config.get('session', {})
     new_label = session_config.get('label', origin_session.label)
     query = (
         f'label={quote_numeric_string(new_label)},'
@@ -268,7 +268,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     dest_session = dest_session.reload()
     if not export_config:
         export_config = {'acquisition': {}}
-    acquisition_config = export_config.get('acquisition')
+    acquisition_config = export_config.get('acquisition', {})
     query = (
         f'label={quote_numeric_string(origin_acquisition.label)},'
         f'info.export.origin_id="{hash_string(origin_acquisition.id)}"'
