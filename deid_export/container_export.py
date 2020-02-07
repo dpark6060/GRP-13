@@ -19,7 +19,7 @@ import yaml
 from deid_export.retry import retry
 from deid_export.metadata_export import get_container_metadata
 from deid_export.file_exporter import FileExporter
-from deid_export import deid_template, META_WHITELIST_DICT
+from deid_export import deid_template
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
@@ -101,73 +101,6 @@ def quote_numeric_string(input_str):
     else:
         output_str = input_str
     return output_str
-
-
-def create_metadata_dict(origin_container, container_type, container_config=None):
-    """
-    Populates a new dictionary with metadata from origin_container according to container_config. origin_container can
-    be a dictionary containing a string at 'id' or a
-    Args:
-        origin_container (dict or flywheel.<Container>):
-        container_type: container type of origin_container (i.e. 'subject', 'session', 'acquisition')
-        container_config:
-    Raises:
-        ValueError: When not origin_container.get('id')
-    Returns:
-        (dict): a dictionary containing whitelisted metadata that can be used to update a container
-    """
-    # Ensure our container is up-to-date/fully populated (unless it's a dict)
-    if hasattr(origin_container, 'reload'):
-        # Handle non-api subjects (mostly for testing)
-        if origin_container.reload():
-            origin_container = origin_container.reload()
-        origin_container = origin_container.to_dict()
-
-    if not origin_container.get('id'):
-        raise ValueError(f'{container_type} does not have an id!')
-    # Initialize the dictionary
-    meta_dict = dict()
-
-    # Initialize empty lists
-    meta_wl = list()
-    info_wl = list()
-
-    # Parse whitelisted fields from the config
-    if isinstance(container_config, dict):
-        if isinstance(container_config.get('whitelist'), dict):
-            whitelist_dict = container_config.get('whitelist')
-            if isinstance(whitelist_dict.get('metadata'), list):
-                meta_wl = whitelist_dict.get('metadata')
-            elif isinstance(whitelist_dict.get('metadata'), str):
-                if whitelist_dict.get('metadata').lower() == 'all':
-                    meta_wl = list(META_WHITELIST_DICT.get(container_type))
-            if isinstance(whitelist_dict.get('info'), list):
-                info_wl = whitelist_dict.get('info')
-            elif isinstance(whitelist_dict.get('info'), str):
-                if whitelist_dict.get('info').lower() == 'all':
-                    meta_wl.append('info')
-
-    meta_dict['info'] = dict()
-    # If info in its entirety is to be copied, do this before adding export information
-    if 'info' in meta_wl:
-        meta_dict['info'] = origin_container.get('info')
-    else:
-
-        if isinstance(origin_container.get('info'), dict):
-            for key, value in origin_container.get('info').items():
-                if key in info_wl:
-                    meta_dict['info'][key] = value
-
-    # set info.export.origin_id for record-keeping
-    meta_dict['info']['export'] = {'origin_id': hash_string(origin_container.get('id'))}
-    meta_whitelist = META_WHITELIST_DICT.get(container_type)
-
-    # Copy non-info fields
-    for item in meta_wl:
-        if item in meta_whitelist and origin_container.get(item) and (item not in meta_dict.keys()):
-            meta_dict[item] = origin_container.get(item)
-
-    return meta_dict
 
 
 def find_or_create_subject(origin_subject, dest_proj, export_config=None):
