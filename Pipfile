@@ -6,14 +6,18 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
+pipenv-setup = "*"
+pylint = "*"
 mock = "*"
+flywheel-deid-export = {editable = true,path = "."}
 
 [packages]
 flywheel-sdk = "~=10.6.1"
-flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "8ab302feb3d509f44ded3c81ad0e19a9108052dc"}
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "394494e69452102a2c81922b27ab83dc23f6bffc"}
 pyaml = "*"
 joblib = "*"
 pandas = "*"
+dotty-dict = "*"
 
 [requires]
 python_version = "3.8"

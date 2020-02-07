@@ -17,14 +17,9 @@ import flywheel
 import yaml
 
 from deid_export.retry import retry
+from deid_export.metadata_export import get_container_metadata
 from deid_export.file_exporter import FileExporter
-from deid_export import deid_template
-
-META_WHITELIST_DICT = {
-    'acquisition': ('timestamp', 'timezone', 'uid'),
-    'subject': ('firstname', 'lastname', 'sex', 'cohort', 'ethnicity', 'race', 'species', 'strain'),
-    'session': ('age', 'operator', 'timestamp', 'timezone', 'uid', 'weight')
-}
+from deid_export import deid_template, META_WHITELIST_DICT
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
@@ -92,7 +87,7 @@ def quote_numeric_string(input_str):
     """Wraps a numeric string in double quotes. Attempts to coerce non-str to str and logs a warning.
 
     Args:
-        input_str (str): string to be modified (if numeric string - matches ^[\d]+$)
+        input_str (str): string to be modified (if numeric string)
 
     Returns:
         str: A numeric string wrapped in quotes if input_str is numeric, or str(input_str)
@@ -175,7 +170,7 @@ def create_metadata_dict(origin_container, container_type, container_config=None
     return meta_dict
 
 
-def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
+def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     """
     Searches the destination project for a subject with code matching origin_subject.code (or 'code' from subject_config
         if provided). If found, the subject metadata is updated to match the whitelisted metadata of origin_subject.
@@ -190,15 +185,16 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
     """
     origin_subject = origin_subject.reload()
     dest_proj = dest_proj.reload()
-    if not subject_config:
-        subject_config = dict()
+    if not export_config:
+        export_config = {'subject': {}}
+    subject_config = export_config.get('subject')
     new_code = subject_config.get('code', origin_subject.code)
     query_code = quote_numeric_string(new_code)
 
     # Since subject code must be unique within a project, we do not need to search by info.export.origin_id
     dest_subject = dest_proj.subjects.find_first(f'code={query_code}')
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_subject, 'subject', subject_config)
+    meta_dict = get_container_metadata(origin_container=origin_subject, export_dict=export_config)
 
     if not dest_subject:
         log.debug(f'Creating destination subject for ({origin_subject.id})')
@@ -215,7 +211,7 @@ def find_or_create_subject(origin_subject, dest_proj, subject_config=None):
     return dest_subject
 
 
-def find_or_create_subject_session(origin_session, dest_subject, session_config=None):
+def find_or_create_subject_session(origin_session, dest_subject, export_config=None):
     """
     Searches the destination subject (dest_subject) for a session with with label matching origin_session.label
         (or 'label' from session_config, if provided) and info.export.origin_id = hash_string(origin_session.id)
@@ -224,15 +220,16 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
     Args:
         origin_session (flywheel.Session): the session to be exported
         dest_subject (flywheel.Subject): the subject to which to export the session
-        session_config (dict): an optional dictionary specifying metadata whitelists and a new session label to use
+        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
 
     Returns:
         (flywheel.Session): the found or created session in dest_subject
     """
     origin_session = origin_session.reload()
     dest_subject = dest_subject.reload()
-    if not session_config:
-        session_config = dict()
+    if not export_config:
+        export_config = {'session': {}}
+    session_config = export_config.get('session')
     new_label = session_config.get('label', origin_session.label)
     query = (
         f'label={quote_numeric_string(new_label)},'
@@ -240,7 +237,7 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
     )
     dest_session = dest_subject.sessions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_session, 'session', session_config)
+    meta_dict = get_container_metadata(origin_container=origin_session, export_dict=export_config)
     if not dest_session:
         log.debug(f'Creating destination session for ({origin_session.id})')
         # Add session to subject
@@ -252,7 +249,7 @@ def find_or_create_subject_session(origin_session, dest_subject, session_config=
     return dest_session
 
 
-def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisition_config=None):
+def find_or_create_session_acquisition(origin_acquisition, dest_session, export_config=None):
     """
     Searches the destination session (dest_session) for an acquisition with label matching origin_acquisition.label
         (or 'label' from acquisition_config, if provided) and info.export.origin_id = hash_string(origin_acquisition.id)
@@ -262,23 +259,23 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, acquisi
     Args:
         origin_acquisition (flywheel.Acquisition): the acquisition to be exported
         dest_session (flywheel.Session): the session to which to export the acquisition
-        acquisition_config (dict): an optional dictionary specifying metadata whitelists and a new acquisition
-            label to use
+        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
 
     Returns:
         (flywheel.Acquisition): the found or created acquisition in dest_session
     """
     origin_acquisition = origin_acquisition.reload()
     dest_session = dest_session.reload()
-    if not acquisition_config:
-        acquisition_config = dict()
+    if not export_config:
+        export_config = {'acquisition': {}}
+    acquisition_config = export_config.get('acquisition')
     query = (
         f'label={quote_numeric_string(origin_acquisition.label)},'
         f'info.export.origin_id="{hash_string(origin_acquisition.id)}"'
     )
     dest_acquisition = dest_session.acquisitions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = create_metadata_dict(origin_acquisition, 'acquisition', acquisition_config)
+    meta_dict = get_container_metadata(origin_container=origin_acquisition, export_dict=export_config)
     if not dest_acquisition:
         log.debug(f'Creating destination acquisition for ({origin_acquisition.id})')
 
@@ -367,7 +364,7 @@ class SessionExporter:
         self.origin_project = fw_client.get_project(origin_session.project)
         self.dest_proj = fw_client.get_project(dest_proj_id)
         self.origin = origin_session.reload()
-        #self.log = logging.getLogger(f'{self.origin.id}_exporter')
+        # self.log = logging.getLogger(f'{self.origin.id}_exporter')
 
         self.errors = list()
         self.file_types = export_config.get('file_types', ['dicom'])
@@ -387,7 +384,7 @@ class SessionExporter:
             self.dest_subject = find_or_create_subject(
                 origin_subject=self.origin.subject,
                 dest_proj=self.dest_proj,
-                subject_config=self.export_config.get('subject', None)
+                export_config=self.export_config
             )
         return self.dest_subject
 
@@ -399,7 +396,7 @@ class SessionExporter:
             self.dest = find_or_create_subject_session(
                 origin_session=self.origin,
                 dest_subject=self.dest_subject,
-                session_config=self.export_config.get('session', None)
+                export_config=self.export_config
             )
         return self.dest
 
@@ -412,7 +409,7 @@ class SessionExporter:
             find_or_create_session_acquisition(
                 origin_acquisition=acquisition,
                 dest_session=self.dest,
-                acquisition_config=self.export_config.get('acquisition', None)
+                export_config=self.export_config
             )
 
         self.dest.reload()
@@ -425,7 +422,7 @@ class SessionExporter:
             self.dest = self.find_or_create_dest()
 
         # project files
-        if project_files == True:
+        if project_files is True:
             proj_file_list = initialize_container_file_export(
                 fw_client=self.client,
                 origin_container=self.origin_project.reload(),
@@ -436,7 +433,7 @@ class SessionExporter:
             self.files.extend(proj_file_list)
 
         # subject files
-        if subject_files == True:
+        if subject_files is True:
             subj_file_list = initialize_container_file_export(
                 fw_client=self.client,
                 origin_container=self.origin.subject.reload(),
@@ -464,7 +461,7 @@ class SessionExporter:
             dest_acq = find_or_create_session_acquisition(
                 origin_acquisition=origin_acq,
                 dest_session=self.dest,
-                acquisition_config=self.export_config.get('acquisition', None)
+                export_config=self.export_config
             )
             tmp_acq_file_list = initialize_container_file_export(
                 fw_client=self.client,
