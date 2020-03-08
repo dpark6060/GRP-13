@@ -12,8 +12,8 @@ mock = "*"
 flywheel-deid-export = {editable = true,path = "."}
 
 [packages]
-flywheel-sdk = "~=10.6.1"
-flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "394494e69452102a2c81922b27ab83dc23f6bffc"}
+flywheel-sdk = "~=11.0"
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "db54113652d6c7a9c69ac4e1f81495adf55a7a56"}
 pyaml = "*"
 joblib = "*"
 pandas = "*"

@@ -1,0 +1,19 @@
+dicom:
+  filenames:
+    - output: '{Modality}_{SOPInstanceUID}.dcm'
+      input-regex: '.*.dcm.*'
+  fields:
+    #- name: SeriesDescription
+     # replace-with: 'FLYWHEEL'
+    - name: PatientID
+      replace-with: 'FLYWHEEL'
+
+zip:
+  filenames:
+    - output: '{SeriesDescription}_{SeriesNumber}_{InstanceNumber}.dcm.zip'
+      input-regex: '^.*\.zip$'
+  hash-subdirectories: true
+  fields:
+    - name: comment
+      replace-with: 'FLYWHEEL'
+

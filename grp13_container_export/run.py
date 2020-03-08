@@ -11,11 +11,11 @@ log.setLevel('INFO')
 def get_analysis_parent(fw_client, container_id):
     """Return parent container id of the analysis container provided
     Args:
-        fw_client (object): An instance of the Flywheel client
+        fw_client (flywheel.Client): An instance of the Flywheel client
         container_id (str): A flywheel analysis container id
 
     Returns:
-        str: The container object or None if an exception is raised retrieving the container
+        (object or None): The container object or None if an exception is raised retrieving the container
     """
     try:
         container = fw_client.get(container_id)
@@ -34,11 +34,11 @@ def lookup_project(fw_client, project_resolver_path):
     If the path is not for a project or an exception is raised, will return None
 
     Args:
-        fw_client (object): An instance of the Flywheel client
+        fw_client (flywheel.Client): An instance of the Flywheel client
         project_resolver_path (str): Path to project
 
     Returns:
-        dict: The project at the resolver path
+        object: The project at the resolver path
 
     """
     try:

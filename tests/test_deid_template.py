@@ -21,7 +21,7 @@ def test_can_update_deid_dicom_profile():
     }
 
     new_config = update_deid_profile(config, replace_with)
-
+    assert new_config['only-config-profiles'] is True
     assert new_config['dicom']['date-increment'] == -20
     assert new_config['dicom']['fields'][0]['remove'] is False
     assert new_config['dicom']['fields'][1]['replace-with'] == 'TEST'

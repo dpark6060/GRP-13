@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from deid_export.container_export import hash_string, load_template_file, quote_numeric_string
+from deid_export.container_export import hash_string, load_template_dict, quote_numeric_string
 
 DATA_ROOT = Path(__file__).parent/'data'
 
@@ -13,7 +13,7 @@ def test_hash_string():
 
 
 def test_can_load_template_file():
-    res = load_template_file(str(DATA_ROOT / 'example1-deid-profile.yaml'))
+    res = load_template_dict(str(DATA_ROOT / 'example1-deid-profile.yaml'))
     assert res is not None
     assert 'dicom' in res
     assert 'export' in res
@@ -21,7 +21,7 @@ def test_can_load_template_file():
 
 def test_load_template_file_raises_with_path_issue():
     with pytest.raises(FileNotFoundError):
-        load_template_file(str(DATA_ROOT / 'does-not-exist.yaml'))
+        load_template_dict(str(DATA_ROOT / 'does-not-exist.yaml'))
 
 
 def test_quote_numeric_string():
