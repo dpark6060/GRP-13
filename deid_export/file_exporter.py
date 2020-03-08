@@ -4,11 +4,18 @@ import logging
 import os
 import re
 import tempfile
+import time
 
 import flywheel
+from flywheel_migration import deidentify
+from flywheel_migration.util import get_safe_filename
 
-from .retry import retry
-from .deid_file import deidentify_path
+from deid_export.retry import retry
+from deid_export.deid_file import deidentify_file
+from deid_export import deid_template
+from deid_export.metadata_export import get_container_metadata
+
+log = logging.getLogger(__name__)
 
 
 def search_job_log_str(regex_string, job_log_str):
@@ -20,7 +27,7 @@ def search_job_log_str(regex_string, job_log_str):
 
 
 def get_last_timestamp(job_log_str):
-    JOB_LOG_TIME_STR_REGEX = '[\d]{4}\-[\d]{2}\-[\d]{2}\s[\d]{2}:[\d]{2}:[\d]{2}\.[\d]+'
+    JOB_LOG_TIME_STR_REGEX = r'[\d]{4}\-[\d]{2}\-[\d]{2}\s[\d]{2}:[\d]{2}:[\d]{2}\.[\d]+'
     time_str_list = search_job_log_str(JOB_LOG_TIME_STR_REGEX, job_log_str)
     dt_list = [datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f') for time in time_str_list]
     # grp-13-deid-file logger logs UTC timestamp
@@ -63,7 +70,7 @@ def get_job_state_from_logs(job_log_obj,
 
     # If contains 'Uploading results...' but is not complete, it is failed or cancelled.
     # (Can't tell which from log alone)
-    elif search_job_log_str('Uploading results[\.]{3}', job_log_str):
+    elif search_job_log_str(r'Uploading results[\.]{3}', job_log_str):
         state = 'failed_or_cancelled'
 
     # If the log contains timestamps, but is none of the above, it's running
@@ -153,37 +160,61 @@ class DeidUtilityJob:
 class FileExporter:
     """A class for representing the export status of a file"""
     @retry(max_retry=2)
-    def __init__(self, fw_client, origin_parent, origin_filename, dest_parent, filename=None, overwrite=False,
-                 log_level='INFO'):
+    def __init__(self, fw_client, origin_parent, origin_filename, dest_parent, overwrite=False, log_level='INFO',
+                 config=None):
         self.fw_client = fw_client
         self.origin_parent = origin_parent
         self.dest_parent = dest_parent
         self.origin_filename = origin_filename
+        self.config = dict()
         self.log = logging.getLogger(f'{self.origin_parent.id}_{self.origin_filename}_exporter')
         self.log.setLevel(log_level)
         self.state = 'initialized'
         self.overwrite = overwrite
-        self.filename = filename
+        self.filename = ''
+        self.deid_path = ''
         self.deid_job = DeidUtilityJob()
         self.errors = list()
-        # If a filename was not provided, default to the origin filename
-        if not self.filename:
-            self.filename = origin_filename
-
+        self.metadata_dict = None
         self.origin = origin_parent.get_file(origin_filename)
         if not self.origin:
             self.error_handler(
                 f'{self.origin_filename} does not exist in {self.origin_parent.container_type} {self.origin_parent.id}'
             )
-        self.dest = self.dest_parent.get_file(filename)
-        if self.dest:
-            self.state = 'exists_at_destination'
+        self.dest = None
         self.initial_state = self.state
+        if isinstance(config, dict):
+            self.config = config
 
     def error_handler(self, log_str):
         self.state = 'error'
-        self.log.error(log_str, exc_info=True)
+        self.log.error(log_str)
         self.errors.append(log_str)
+
+    def get_metadata_dict(self):
+        conf_dict = dict()
+        if isinstance(self.config, dict):
+            conf_dict = self.config.get('file', dict())
+        self.metadata_dict = get_container_metadata(self.origin, conf_dict)
+        self.log.critical(self.metadata_dict)
+        return self.metadata_dict
+
+    def update_metadata(self):
+
+        if not self.metadata_dict:
+            self.get_metadata_dict()
+
+        if self.dest:
+            metadata_dict = self.metadata_dict.copy()
+            if metadata_dict.get('info'):
+                info_dict = metadata_dict.pop('info')
+                self.log.critical(f'updating subject info for file {self.filename}')
+                self.dest_parent.update_file_info(self.filename, info_dict)
+                self.log.critical(f'updated subject info for file {self.filename}')
+            if metadata_dict:
+                self.dest_parent.update_file(self.filename, metadata_dict)
+        else:
+            self.error_handler(f'could not update metadata for {self.filename}: {self.origin.id} - file was not found!')
 
     @retry(max_retry=2)
     def reload_fw_object(self, fw_object):
@@ -196,16 +227,18 @@ class FileExporter:
             try:
                 self.origin_parent = self.origin_parent.reload()
                 self.dest_parent = self.dest_parent.reload()
-                self.dest = self.dest_parent.get_file(self.filename)
-                if self.dest and self.state in ['pending', 'running', 'upload_attempted']:
-                    if not self.overwrite:
+                if self.filename:
+                    self.dest = self.dest_parent.get_file(self.filename)
+
+                if self.dest and self.state in ['pending', 'running', 'upload_attempted', 'metadata_updated']:
+                    dest_uid = self.dest.get('info', {}).get('export', {}).get('origin_id', None)
+                    local_uid = self.get_metadata_dict().get('info', {}).get('export', {}).get('origin_id', None)
+                    if dest_uid and dest_uid == local_uid:
                         self.state = 'exported'
+                        self.cleanup()
                     else:
-                        if self.state == 'upload_attempted':
-                            if self.initial_state == 'exists_at_destination':
-                                self.state = 'overwrite_exported'
-                            else:
-                                self.state = 'exported'
+                        self.update_metadata()
+                        self.state = 'metadata_updated'
 
                 if self.deid_job.id:
                     self.deid_job = self.deid_job.reload(self.fw_client)
@@ -219,7 +252,7 @@ class FileExporter:
                                 'for additional details'
                             )
                             self.error_handler(log_str)
-                    elif self.deid_job.state  == 'complete' and self.dest:
+                    elif self.deid_job.state == 'complete' and self.dest:
                         self.state = 'exported'
                     else:
                         pass
@@ -235,12 +268,6 @@ class FileExporter:
     def submit_deid_job(self, gear_path, template_file_obj):
 
         self.reload()
-        if self.dest and not self.overwrite:
-            log_str = (
-                f'{self.filename} already exists in {self.dest_parent.container_type} {self.dest_parent.id}'
-                f'{self.origin_filename} cannot be exported as {self.filename}'
-            )
-            self.error_handler(log_str)
 
         if self.deid_job.id:
             self.log.warning(
@@ -272,56 +299,79 @@ class FileExporter:
             self.deid_job.cancel(self.fw_client)
             self.state = 'cancelled'
 
-    def local_deid_export(self, template_path):
-        self.reload()
-        if self.dest and not self.overwrite:
-            log_str = (
-                f'{self.filename} already exists in {self.dest_parent.container_type} {self.dest_parent.id} '
-                f'{self.origin_filename} cannot be exported as {self.filename}'
+    def deidentify(self, deid_profile):
+        with tempfile.TemporaryDirectory() as temp_dir1:
+            # Download the file
+
+            local_file_path = os.path.join(temp_dir1, get_safe_filename(self.origin_filename))
+            self.log.debug(f'Downloading {self.origin.name} to {local_file_path}')
+            self.origin.download(local_file_path)
+
+            # De-identify
+            self.log.debug(
+                f'Applying de-identfication template to {local_file_path}'
+                f' to {os.path.basename(local_file_path)}'
             )
-            self.log.warning(log_str)
-            self.state = 'exists_at_destination'
-            return None
-        if not os.path.exists(template_path):
+            temp_dir = tempfile.mkdtemp()
+            deid_path = deidentify_file(deid_profile=deid_profile, file_path=local_file_path,
+                                        output_directory=temp_dir)
+            if not os.path.exists(deid_path):
+                self.error_handler(f'{self.origin_filename} de-identification failed.')
+            else:
+                self.filename = os.path.basename(deid_path)
+                self.deid_path = deid_path
+                self.get_metadata_dict()
+                self.state = 'processed'
+
+    def upload(self):
+        """
+        If self.deid_file exists and no file conflicts are found for the dest parent container,
+            the file will be uploaded
+        """
+
+        def can_upload():
+            """
+            Checks whether a file of the same filename exists on the destination parent container. If not, it is safe to
+            upload. If so, overwrite must be True and the export_id of the existing file must match the one for the file
+            to be uploaded.
+
+            Returns:
+                bool: whether a file can be uploaded to the destination parent container
+
+            """
+            upload = False
+            self.reload()
+            if not self.dest:
+                upload = True
+            else:
+                if self.overwrite:
+                    upload = True
+
+                else:
+                    self.error_handler(
+                        f'{self.filename} cannot be uploaded to {self.dest_parent.id}. File exists and '
+                        f'overwrite is set to False')
+
+            return upload
+        if not os.path.exists(self.deid_path):
             self.error_handler(
-                f'De-id path {template_path} does not exist. {self.filename} will not be exported to '
-                f'{self.dest_parent.id}'
-            )
-            return None
-
-        @retry(3)
-        def _attempt_export():
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Download the file
-
-                local_file_path = os.path.join(temp_dir, self.filename)
-                self.log.debug(f'Downloading {self.origin.name} to {local_file_path}')
-                self.origin.download(local_file_path)
-
-                # De-identify
-                self.log.debug(
-                    f'Applying de-identfication template {os.path.basename(template_path)}'
-                    f' to {os.path.basename(local_file_path)}'
-                )
-                deid_path = deidentify_path(input_file_path=local_file_path, profile_path=template_path)
-
-                # Delete prior to upload if overwrite
-                if os.path.exists(deid_path) and self.dest_parent.get_file(self.filename) and self.overwrite:
-                    self.log.debug(f'deleting {self.filename} on {self.dest_parent.container_type} {self.dest_parent.id}')
+                f'{self.filename} cannot be uploaded to {self.dest_parent.id} - local path does not exist')
+        if self.state == 'processed':
+            if can_upload():
+                if self.dest:
+                    self.log.debug(
+                        f'deleting {self.filename} on {self.dest_parent.container_type} {self.dest_parent.id}'
+                    )
                     self.dest_parent.delete_file(self.filename)
 
-                self.log.debug(f'Uploading {self.filename} to {self.dest_parent.container_type} {self.dest_parent.id}')
-                self.dest_parent.upload_file(deid_path)
+                self.dest_parent.upload_file(self.deid_path)
                 self.state = 'upload_attempted'
-        try:
-            _attempt_export()
+        else:
+            self.log.warning('Cannot upload %s. State %s is not processed.', self.filename, self.state)
 
-        except Exception as e:
-            self.error_handler(
-                f'An exception occured while attempting to de-identify {self.origin_filename} '
-                f'{self.filename} will not be exported to {self.dest_parent.id} exception:\n{e}'
-            )
-            return None
+    def cleanup(self):
+        if os.path.exists(self.deid_path):
+            os.remove(self.deid_path)
 
     def get_status_dict(self):
         self.reload()
@@ -335,10 +385,9 @@ class FileExporter:
             'state': self.state,
             'errors': '\t'.join(self.errors)
         }
-        if self.dest != None:
+        if self.dest:
             status_dict['export_file_id'] = self.dest.id
         return status_dict
-
 
 
 

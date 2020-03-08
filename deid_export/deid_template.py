@@ -1,11 +1,14 @@
-#!/usr/bin/env python
-import tempfile
+#!/usr/bin/env python3
+
 import argparse
 import copy
-import pandas as pd
-from pathlib import Path
-from ruamel.yaml import load, safe_dump, Loader, dump
 import logging
+from pathlib import Path
+import tempfile
+
+from flywheel_migration import deidentify
+import pandas as pd
+from ruamel.yaml import load, safe_dump, Loader, dump
 
 DEFAULT_REQUIRED_COLUMNS = ['subject.code']
 DEFAULT_SUBJECT_CODE_COL = 'subject.code'
@@ -53,6 +56,8 @@ def update_deid_profile(deid_template, updates):
 
     new_deid = copy.deepcopy(deid_template)
 
+    if 'only-config-profiles' not in new_deid.keys():
+        new_deid['only-config-profiles'] = True
     for k in updates.keys():
         try:
             el, key_or_fieldinfo, is_fields = find_profile_element(new_deid, k)
@@ -156,6 +161,23 @@ def validate(deid_template_path,
             logger.warning(f'Column `{k}` not found in DeID template')
 
     return df
+
+
+def load_deid_profile(template_dict):
+    """
+    Load the flywheel.migration DeIdProfile at the profile_path
+
+    Args:
+        template_dict(dict): a dictionary loaded from the de-identification template file that will be provided as
+            config to DeIdProfile
+
+    Returns:
+        flywheel_migration.deidentify.DeIdProfile, export_config
+    """
+    deid_profile = deidentify.DeIdProfile()
+    deid_profile.load_config(template_dict)
+    export_config = template_dict.get('export', dict())
+    return deid_profile, export_config
 
 
 def get_updated_template(df,

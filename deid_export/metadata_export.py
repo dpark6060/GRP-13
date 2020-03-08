@@ -9,7 +9,7 @@ META_WHITELIST_DICT = {
     'session': ('age', 'operator', 'timestamp', 'timezone', 'uid', 'weight', 'info')
 }
 
-BLACKLIST = ('info.header',)
+BLACKLIST = {'info.header'}
 
 
 def hash_string(input_str):
@@ -89,6 +89,7 @@ def get_container_metadata(origin_container, export_dict):
             metadata_dict = get_whitelist_dict(input_dict=origin_container, whitelist=metadata_list)
             if metadata_dict:
                 metadata_dot_dict = dotty_dict.dotty(metadata_dict)
-    metadata_dot_dict['info.export.origin_id'] = hash_string(origin_container.get('id'))
+    origin_container_id = origin_container.get('id') or origin_container.get('_id')
+    metadata_dot_dict['info.export.origin_id'] = hash_string(origin_container_id)
     output_dict = metadata_dot_dict.to_dict()
     return output_dict

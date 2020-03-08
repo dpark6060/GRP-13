@@ -20,6 +20,7 @@ from deid_export.retry import retry
 from deid_export.metadata_export import get_container_metadata
 from deid_export.file_exporter import FileExporter
 from deid_export import deid_template
+from flywheel_migration import deidentify
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
@@ -38,7 +39,7 @@ def hash_string(input_str):
     return output_hash
 
 
-def load_template_file(template_file_path):
+def load_template_dict(template_file_path):
     """
     Determines whether the file at template_file_path is JSON or YAML and returns the Python dictionary representation
     Args:
@@ -59,6 +60,7 @@ def load_template_file(template_file_path):
         elif ext in ['.yml', '.yaml']:
             with open(template_file_path, 'r') as f:
                 template = yaml.load(f, Loader=yaml.FullLoader)
+        template = deid_template.update_deid_profile(template, dict())
         return template
     except ValueError:
         log.exception(f'Unable to load template at: {template_file_path}')
@@ -221,17 +223,17 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     return dest_acquisition
 
 
-def initialize_container_file_export(fw_client, origin_container, dest_container, filename_dict, filetype_list,
-                                     overwrite=False):
+def initialize_container_file_export(fw_client, deid_profile, origin_container, dest_container, overwrite=False,
+                                     config=None):
     """
     Initializes a list of FileExporter objects for the origin_container/dest_container combination
 
     Args:
+        config:
+        deid_profile(flywheel_migration.deidentify.DeIdProfile):
         fw_client (fw.Client): an instance of the flywheel client
         origin_container (flywheel.<Container>): the container with files to be exported
         dest_container (flywheel.<Container>): the container to which files are to be exported
-        filename_dict (dict): dictionary with <current filename> <new filename> key-value pairs
-        filetype_list (list): list of filetypes to be exported
         overwrite (bool): whether to overwrite files that currently exist in dest_container
 
     Returns:
@@ -239,46 +241,45 @@ def initialize_container_file_export(fw_client, origin_container, dest_container
     """
     file_exporter_list = list()
     for container_file in origin_container.files:
-        export_filename = filename_dict.get(container_file.name, None)
 
-        if container_file.type in filetype_list:
-            log.debug(f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
-            tmp_file_exporter = FileExporter(
-                fw_client=fw_client,
-                origin_parent=origin_container,
-                origin_filename=container_file.name,
-                dest_parent=dest_container,
-                filename=export_filename,
-                overwrite=overwrite
-            )
+        if deid_profile.matches_file(container_file.name):
+            log.debug(
+                f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
+            tmp_file_exporter = FileExporter(fw_client=fw_client, origin_parent=origin_container,
+                                             origin_filename=container_file.name, dest_parent=dest_container,
+                                             overwrite=overwrite, config=config)
             file_exporter_list.append(tmp_file_exporter)
+        else:
+            log.debug('Ignoring file %s, as it does not have a matching template', container_file.name)
+            continue
+
     return file_exporter_list
 
 
-def local_file_export(api_key, file_exporter_dict, template_path, overwrite=False):
+def local_file_export(file_exporter_dict, deid_profile, overwrite=False, api_key=None, fw_client=None):
     """
     Instantiates a flywheel client and  de-identifies/anonymizes files according to the de-identification template at
     template_path
     Args:
-        api_key (str): api key for the flywheel client
+
         file_exporter_dict (dict): dictionary representing the FileExporter status
-        template_path (str): path to a de-identification template
+        deid_profile (str): path to a de-identification template
         overwrite (bool): whether to overwrite files at the destination upon collision
+        api_key (str): api key for the flywheel client
+        fw_client (flywheel.Client): an instance of the flywheel client
 
     Returns:
         (dict): dictionary representing the status of the FileExporter after attempted de-identification
     """
-    fw_client = flywheel.Client(api_key, skip_version_check=True)
-    file_exporter = FileExporter(
-        fw_client=fw_client,
-        origin_parent=fw_client.get(file_exporter_dict.get('origin_parent')),
-        origin_filename=file_exporter_dict.get('origin_filename'),
-        dest_parent=fw_client.get(file_exporter_dict.get('export_parent')),
-        filename=file_exporter_dict.get('export_filename'),
-        overwrite=overwrite
-    )
+    if api_key and not fw_client:
+        fw_client = flywheel.Client(api_key, skip_version_check=True)
+    file_exporter = FileExporter(fw_client=fw_client,
+                                 origin_parent=fw_client.get(file_exporter_dict.get('origin_parent')),
+                                 origin_filename=file_exporter_dict.get('origin_filename'),
+                                 dest_parent=fw_client.get(file_exporter_dict.get('export_parent')),
+                                 overwrite=overwrite)
     if file_exporter.state != 'error':
-        file_exporter.local_deid_export(template_path=template_path)
+        file_exporter.local_deid_export(deid_profile=deid_profile)
     # wait for file to export
     time.sleep(2)
     status_dict = file_exporter.get_status_dict()
@@ -289,18 +290,17 @@ def local_file_export(api_key, file_exporter_dict, template_path, overwrite=Fals
 
 class SessionExporter:
 
-    def __init__(self, fw_client, origin_session, dest_proj_id, export_config=None, dest_container_id=None):
+    def __init__(self, fw_client, template_dict, origin_session, dest_proj_id,
+                 dest_container_id=None):
         self.client = fw_client
-        if not isinstance(export_config, dict):
-            export_config = dict()
-        self.export_config = export_config
+        self.deid_profile, self.export_config = deid_template.load_deid_profile(template_dict)
+
         self.origin_project = fw_client.get_project(origin_session.project)
         self.dest_proj = fw_client.get_project(dest_proj_id)
         self.origin = origin_session.reload()
         # self.log = logging.getLogger(f'{self.origin.id}_exporter')
 
         self.errors = list()
-        self.file_types = export_config.get('file_types', ['dicom'])
         self.files = list()
         self.dest_subject = None
 
@@ -347,43 +347,34 @@ class SessionExporter:
 
         self.dest.reload()
 
-    def initialize_files(self, subject_files=False, project_files=False, filename_dict=None):
+    def initialize_files(self, subject_files=False, project_files=False):
         log.debug(f'Initializing {self.origin.id} files')
-        if not isinstance(filename_dict, dict):
-            filename_dict = dict()
         if not self.dest:
             self.dest = self.find_or_create_dest()
 
         # project files
         if project_files is True:
-            proj_file_list = initialize_container_file_export(
-                fw_client=self.client,
-                origin_container=self.origin_project.reload(),
-                dest_container=self.dest_proj.reload(),
-                filename_dict=filename_dict,
-                filetype_list=self.file_types
-            )
+            proj_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
+                                                              fw_client=self.client,
+                                                              origin_container=self.origin_project.reload(),
+                                                              dest_container=self.dest_proj.reload(),
+                                                              config=self.export_config)
             self.files.extend(proj_file_list)
 
         # subject files
         if subject_files is True:
-            subj_file_list = initialize_container_file_export(
-                fw_client=self.client,
-                origin_container=self.origin.subject.reload(),
-                dest_container=self.dest.subject.reload(),
-                filename_dict=filename_dict,
-                filetype_list=self.file_types
-            )
+            subj_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
+                                                              fw_client=self.client,
+                                                              origin_container=self.origin.subject.reload(),
+                                                              dest_container=self.dest.subject.reload(),
+                                                              config=self.export_config)
             self.files.extend(subj_file_list)
 
         # session files
-        sess_file_list = initialize_container_file_export(
-            fw_client=self.client,
-            origin_container=self.origin,
-            dest_container=self.dest.reload(),
-            filename_dict=filename_dict,
-            filetype_list=self.file_types
-        )
+        sess_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
+                                                          fw_client=self.client, origin_container=self.origin,
+                                                          dest_container=self.dest.reload(),
+                                                          config=self.export_config)
         self.files.extend(sess_file_list)
 
         self.origin = self.origin.reload()
@@ -396,26 +387,47 @@ class SessionExporter:
                 dest_session=self.dest,
                 export_config=self.export_config
             )
-            tmp_acq_file_list = initialize_container_file_export(
-                fw_client=self.client,
-                origin_container=origin_acq,
-                dest_container=dest_acq,
-                filename_dict=filename_dict,
-                filetype_list=self.file_types
-            )
+            tmp_acq_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
+                                                                 fw_client=self.client, origin_container=origin_acq,
+                                                                 dest_container=dest_acq,
+                                                                 config=self.export_config
+                                                                 )
             self.files.extend(tmp_acq_file_list)
 
         return self.files
 
-    def local_file_export(self, template_path, overwrite=False):
+    def local_file_export(self, overwrite=False):
+        # De-identify
+        for file_exporter in self.files:
+            if file_exporter.state != 'error':
+                file_exporter.deidentify(self.deid_profile)
+        fname_dict = dict()
+        for file_exporter in self.files:
+            if file_exporter.filename:
+                if file_exporter.dest_parent.id not in fname_dict.keys():
+                    fname_dict[file_exporter.dest_parent.id] = [file_exporter.filename]
+                else:
+                    if file_exporter.filename not in fname_dict.get(file_exporter.dest_parent.id):
+                        fname_dict[file_exporter.dest_parent.id].append(file_exporter.filename)
 
-        file_list = [file_exporter.get_status_dict() for file_exporter in self.files]
+                    else:
+                        file_exporter.error_handler(
+                            f'Cannot upload {file_exporter.filename} ({file_exporter.origin.id}) to '
+                            f'{file_exporter.dest_parent.id} because another file has already been uploaded with '
+                            'the same name. Please use filename output strings that will create unique filenames in'
+                            ' your de-identification template.'
+                        )
 
-        api_key = get_api_key_from_client(self.client)
-        dict_list = joblib.Parallel(n_jobs=-2)(joblib.delayed(local_file_export)(
-            api_key=api_key,
-            file_exporter_dict=file_exporter,
-            template_path=template_path, overwrite=overwrite) for file_exporter in file_list)
+        for file_exporter in self.files:
+            file_exporter.reload()
+            if file_exporter.state != 'error' and file_exporter.filename:
+                file_exporter.upload()
+        for file_exporter in self.files:
+            file_exporter.reload()
+            if file_exporter.state == 'upload_attempted':
+                file_exporter.update_metadata()
+
+        dict_list = [file_exporter.get_status_dict() for file_exporter in self.files]
         export_df = pd.DataFrame(dict_list)
 
         del dict_list
@@ -439,19 +451,18 @@ def export_session(
         project_files=False,
         csv_output_path=None,
         overwrite=False):
-    template = load_template_file(template_path)
-    export_config = template.get('export', dict())
+    template = load_template_dict(template_path)
     origin_session = fw_client.get_session(origin_session_id)
 
     session_exporter = SessionExporter(
         fw_client=fw_client,
         origin_session=origin_session,
         dest_proj_id=dest_proj_id,
-        export_config=export_config
+        template_dict=template
     )
 
     session_exporter.initialize_files(subject_files=subject_files, project_files=project_files)
-    session_export_df = session_exporter.local_file_export(template_path=template_path, overwrite=overwrite)
+    session_export_df = session_exporter.local_file_export(overwrite=overwrite)
     if len(session_export_df) >= 1:
         if csv_output_path:
             session_export_df.to_csv(csv_output_path, index=False)
@@ -466,15 +477,15 @@ def export_session(
         return None
 
 
-def get_session_error_df(fw_client, session_obj, error_msg, filetypes=None, project_files=False, subject_files=False):
-    if filetypes is None:
-        filetypes = ['dicom']
+def get_session_error_df(fw_client, session_obj, error_msg, deid_profile, project_files=False,
+                         subject_files=False):
+
     session_obj = session_obj.reload()
     status_dict_list = list()
 
     def _append_file_status_dicts(parent_obj):
         for file_obj in parent_obj.files:
-            if file_obj.type in filetypes:
+            if deid_profile.matches_file(file_obj.name):
                 status_dict = {
                     'origin_filename': file_obj.name,
                     'origin_parent': parent_obj.id,
@@ -515,7 +526,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
     template_obj = None
     df = None
     error_count = 0
-    template_obj = load_template_file(template_path)
+    template_obj = load_template_dict(template_path)
 
     if subject_csv_path and template_obj:
         df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
@@ -523,9 +534,13 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
 
     def _export_session(session_id, session_template_path, project_files=False,
                         subject_files=False, sess_error_msg=None):
+        template_dict = load_template_dict(session_template_path)
+
         if sess_error_msg:
+            sess_deid_profile, exp_dict = deid_template.load_deid_profile(template_dict)
             session_obj = fw_client.get_session(session_id)
-            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg)
+            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
+                                              deid_profile=sess_deid_profile)
         else:
             session_df = export_session(
                 fw_client=fw_client,
@@ -559,6 +574,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
 
     def _export_subject(subject_obj, project_files=False):
         subject_error_count = 0
+        subj_error_msg = None
         with tempfile.TemporaryDirectory() as temp_dir:
             subj_template_path = template_path
             if isinstance(df, pd.DataFrame):
@@ -634,4 +650,3 @@ if __name__ == '__main__':
         overwrite=args.overwrite_files,
         subject_csv_path=args.subject_csv_path
     )
-
