@@ -256,37 +256,6 @@ def initialize_container_file_export(fw_client, deid_profile, origin_container, 
     return file_exporter_list
 
 
-def local_file_export(file_exporter_dict, deid_profile, overwrite=False, api_key=None, fw_client=None):
-    """
-    Instantiates a flywheel client and  de-identifies/anonymizes files according to the de-identification template at
-    template_path
-    Args:
-
-        file_exporter_dict (dict): dictionary representing the FileExporter status
-        deid_profile (str): path to a de-identification template
-        overwrite (bool): whether to overwrite files at the destination upon collision
-        api_key (str): api key for the flywheel client
-        fw_client (flywheel.Client): an instance of the flywheel client
-
-    Returns:
-        (dict): dictionary representing the status of the FileExporter after attempted de-identification
-    """
-    if api_key and not fw_client:
-        fw_client = flywheel.Client(api_key, skip_version_check=True)
-    file_exporter = FileExporter(fw_client=fw_client,
-                                 origin_parent=fw_client.get(file_exporter_dict.get('origin_parent')),
-                                 origin_filename=file_exporter_dict.get('origin_filename'),
-                                 dest_parent=fw_client.get(file_exporter_dict.get('export_parent')),
-                                 overwrite=overwrite)
-    if file_exporter.state != 'error':
-        file_exporter.local_deid_export(deid_profile=deid_profile)
-    # wait for file to export
-    time.sleep(2)
-    status_dict = file_exporter.get_status_dict()
-    del file_exporter
-
-    return status_dict
-
 
 class SessionExporter:
 
