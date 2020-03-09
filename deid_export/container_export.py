@@ -582,8 +582,8 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             if isinstance(df, pd.DataFrame):
                 sess_template_path, session_export_error = _get_subject_template(subject_obj=container.subject,
                                                                                  directory_path=temp_dir)
-        error_count = _export_session(session_id=container_id, session_template_path=sess_template_path,
-                                      sess_error_msg=session_export_error)
+            error_count = _export_session(session_id=container_id, session_template_path=sess_template_path,
+                                          sess_error_msg=session_export_error)
 
     log.info(f'Export for {container.container_type} {container.id} is complete with {error_count} file export errors')
     return error_count
