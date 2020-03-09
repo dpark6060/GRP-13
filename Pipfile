@@ -10,10 +10,11 @@ pipenv-setup = "*"
 pylint = "*"
 mock = "*"
 flywheel-deid-export = {editable = true,path = "."}
+v = {editable = true,version = "*"}
 
 [packages]
 flywheel-sdk = "~=11.0"
-flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "db54113652d6c7a9c69ac4e1f81495adf55a7a56"}
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "f98c9a7bab4a791333ba6cc6fdc6bdc5524b53a0"}
 pyaml = "*"
 joblib = "*"
 pandas = "*"

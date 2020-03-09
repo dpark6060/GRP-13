@@ -43,6 +43,13 @@ def find_profile_element(d, target):
             return find_profile_element(d[tps[0]], '.'.join(tps[1:]))
 
 
+def _add_zip_member_validation(deid_template):
+    if 'zip' in deid_template.keys():
+        if 'validate-zip-members' not in deid_template['zip'].keys():
+            deid_template['zip']['validate-zip-members'] = True
+    return deid_template
+
+
 def update_deid_profile(deid_template, updates):
     """Return the updated deid profile
 
@@ -56,8 +63,6 @@ def update_deid_profile(deid_template, updates):
 
     new_deid = copy.deepcopy(deid_template)
 
-    if 'only-config-profiles' not in new_deid.keys():
-        new_deid['only-config-profiles'] = True
     for k in updates.keys():
         try:
             el, key_or_fieldinfo, is_fields = find_profile_element(new_deid, k)
@@ -72,7 +77,9 @@ def update_deid_profile(deid_template, updates):
                 el[key_or_fieldinfo] = r_type(updates.get(k, el[key_or_fieldinfo]))
         except KeyError:
             logger.info(f'{k} did not match anything in template')
-
+    if 'only-config-profiles' not in new_deid.keys():
+        new_deid['only-config-profiles'] = True
+    new_deid = _add_zip_member_validation(new_deid)
     return new_deid
 
 
