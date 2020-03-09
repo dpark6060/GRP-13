@@ -8,7 +8,7 @@ dicom:
 
 zip:
   filenames:
-    - output: '{SeriesDescription}_{SeriesNumber}_{InstanceNumber}.dcm.zip'
+    - output: '{SeriesDescription}_{SeriesNumber}.dcm.zip'
       input-regex: '^.*\.zip$'
   hash-subdirectories: true
   fields:

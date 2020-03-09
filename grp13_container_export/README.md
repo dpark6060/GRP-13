@@ -269,6 +269,50 @@ chunks [here](https://en.wikipedia.org/wiki/Portable_Network_Graphics)). Example
           remove: true
     ``` 
 
+11. De-identification of ZIP archives (including DICOM zip archives) is now supported (INCLUDING DICOM ARCHIVES).
+comment is currently the only specific field to archive. Filenames can use attributes of their 
+member files such as DICOM. The attributes of the first successfully de-identified file of each type will
+be used. The `hash-subdirectories` option will apply an md5 hash to any subdirectories within the archive.
+By default, the export of an zip archive will fail if any member files cannot be de-identified. If you would like
+to export partial zip archives, then `validate-zip-members: false` can be provided. 
+```yaml
+zip:
+  filenames:
+    - output: '{SeriesDescription}_{SeriesNumber}.dcm.zip'
+      input-regex: '^.*\.zip$'
+  hash-subdirectories: true
+  validate-zip-members: false
+  fields:
+    - name: comment
+      replace-with: 'FLYWHEEL'
+```
+
+12. As of version 2, file types to be exported are now selected on the basis of the templates provided (ie zip, dicom, jpg)
+Every file type has default extension pattens as demonstrated below:
+```
+dicom: ['*.dcm', '*.DCM', '*.ima', '*.IMA']
+jpg: ['*.jpg', '*.jpeg', '*.JPG', '*.JPEG']
+png: ['*.png', '*.PNG']
+tiff: ['*.tif', '*.tiff', '*.TIF', '*.TIFF']
+xml: ['*.XML', '*.xml']
+zip: ['*.zip', '*.ZIP']
+``` 
+
+If you would like to use different matching patterns, you can specify them
+for a given file type by defining a list for `file-filter`, for example, 
+files with extensions of .dicom or .DICOM would be added as follows:
+
+```yaml
+dicom:
+  file-filter: 
+    - '*.DICOM'
+    - '*.dicom'
+    - '*.dcm'
+    - '*.DCM'
+    - '*.ima'
+    - '*.IMA'
+```
+
 
 ### subject_csv (optional)
 The subject_csv facilitates subject-specific configuration of 
@@ -409,10 +453,6 @@ The resolver path (<group>/<project>) to the destination project.
 This project must exist AND the user running the gear must have
 read/write access on this project.
 
-### file_type
-the type of files to de-identify/anonymize and export. Currently only
-"dicom" is supported.
-
 ### overwrite_files (default = true)
 If true, any existing files in the destination project that have been
 exported previously will be overwritten so long as their parent container
@@ -425,12 +465,6 @@ has `info.export.origin_id` defined.
         "optional": false,
         "description": "The resolver path of the destination project, for example, flywheel/test",
         "type": "string"
-    },
-    "file_type": {
-        "default": "dicom",
-        "description": "the type of files to de-identify/anonymize and export",
-        "type": "string",
-        "enum": ["dicom"]
     },
     "overwrite_files": {
         "default": true,
@@ -459,8 +493,6 @@ level and provides the following:
     * Configuration options:
         * The group_id/project name for the project to which to export
         anonymized files
-        * The type of files to de-identify/anonymize (DICOM is currently the
-          only value supported)
         * Whether to overwrite files if they already exist in the target
         project
 
