@@ -167,7 +167,10 @@ def deidentify_file(deid_profile, file_path, output_directory):
         with osfs.OSFS(output_directory) as dst_fs:
             deid_profile.process_file(src_fs=src_fs, src_file=basename, dst_fs=dst_fs)
             deid_files = [dst_fs.getsyspath(fp) for fp in dst_fs.walk.files()]
-    deid_path = deid_files[0]
+    if deid_files:
+        deid_path = deid_files[0]
+    else:
+        deid_path = ''
 
     return deid_path
 

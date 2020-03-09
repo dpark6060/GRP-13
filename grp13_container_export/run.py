@@ -60,9 +60,6 @@ def parse_args_from_context(gear_context):
     project = lookup_project(gear_context.client, project_path)
     destination_id = gear_context.destination.get('id')
 
-    if destination_id == 'aex':
-        destination_id = '5e1639d04e12830026542074'
-
     origin = get_analysis_parent(gear_context.client, destination_id)
 
     # Return None if we failed to get the origin or destination project
