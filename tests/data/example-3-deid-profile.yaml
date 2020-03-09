@@ -3,8 +3,6 @@ dicom:
     - output: '{Modality}_{SOPInstanceUID}.dcm'
       input-regex: '.*.dcm.*'
   fields:
-    #- name: SeriesDescription
-     # replace-with: 'FLYWHEEL'
     - name: PatientID
       replace-with: 'FLYWHEEL'
 
@@ -17,3 +15,57 @@ zip:
     - name: comment
       replace-with: 'FLYWHEEL'
 
+jpg:
+  filenames:
+    - output: '{name_value}.jpg'
+      input-regex: '(?P<name_value>.*)\.jpg$'
+  date-increment: -17
+  remove-gps: True
+  fields:
+  - name: DateTime
+    increment-datetime: true
+  - name: Artist
+    remove: true
+  - name: DateTimeOriginal
+    increment-datetime: true
+  - name: DateTimeDigitized
+    increment-datetime: true
+  - name: CameraOwnerName
+    replace-with: 'REDACTED'
+
+png:
+  filenames:
+    - output: '{name_value}.png'
+      input-regex: '(?P<name_value>.*)\.png'
+  remove-private-chunks: True
+  fields:
+    - name: tEXt
+      remove: true
+    - name: eXIf
+      remove: true
+
+tiff:
+  filenames:
+    - output: '{DateTime}_{name_value}.tiff'
+      input-regex: '(?P<name_value>.*)\.tiff'
+  date-increment: -17
+  remove-private-tags: True
+  fields:
+    - name: DateTime
+      increment-datetime: true
+    - name: Software
+      remove: true
+    - name: Model
+      replace-with: 'REDACTED'
+
+xml:
+  date-increment: -17
+  fields:
+    - name: /Patient/Patient_Date_Of_Birth
+      replace-with: '1900-01-01'
+    - name: /Patient/Patient_Name
+      remove: true
+    - name: /Patient/SUBJECT_ID
+      hash: true
+    - name: /Patient/Visit/Scan/ScanTime
+      increment-datetime: true

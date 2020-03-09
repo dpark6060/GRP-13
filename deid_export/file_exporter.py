@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import re
+import sys
 import tempfile
 import time
 
@@ -196,7 +197,7 @@ class FileExporter:
         if isinstance(self.config, dict):
             conf_dict = self.config.get('file', dict())
         self.metadata_dict = get_container_metadata(self.origin, conf_dict)
-        self.log.critical(self.metadata_dict)
+
         return self.metadata_dict
 
     def update_metadata(self):
@@ -208,9 +209,9 @@ class FileExporter:
             metadata_dict = self.metadata_dict.copy()
             if metadata_dict.get('info'):
                 info_dict = metadata_dict.pop('info')
-                self.log.critical(f'updating subject info for file {self.filename}')
+                self.log.debug(f'updating info for file {self.filename}')
                 self.dest_parent.update_file_info(self.filename, info_dict)
-                self.log.critical(f'updated subject info for file {self.filename}')
+                self.log.debug(f'updated info for file {self.filename}')
             if metadata_dict:
                 self.dest_parent.update_file(self.filename, metadata_dict)
         else:
@@ -313,8 +314,14 @@ class FileExporter:
                 f' to {os.path.basename(local_file_path)}'
             )
             temp_dir = tempfile.mkdtemp()
-            deid_path = deidentify_file(deid_profile=deid_profile, file_path=local_file_path,
-                                        output_directory=temp_dir)
+            try:
+                deid_path = deidentify_file(deid_profile=deid_profile, file_path=local_file_path,
+                                            output_directory=temp_dir)
+            except Exception as e:
+                self.error_handler(
+                    f'an exception was raised when de-identifying {self.origin_filename}:')
+                self.log.exception(e)
+                return None
             if not os.path.exists(deid_path):
                 self.error_handler(f'{self.origin_filename} de-identification failed.')
             else:
@@ -322,6 +329,7 @@ class FileExporter:
                 self.deid_path = deid_path
                 self.get_metadata_dict()
                 self.state = 'processed'
+
     @retry(2)
     def upload(self):
         """

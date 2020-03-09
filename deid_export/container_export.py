@@ -203,7 +203,6 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     dest_session = dest_session.reload()
     if not export_config:
         export_config = {'acquisition': {}}
-    acquisition_config = export_config.get('acquisition', {})
     query = (
         f'label={quote_numeric_string(origin_acquisition.label)},'
         f'info.export.origin_id="{hash_string(origin_acquisition.id)}"'
@@ -316,7 +315,7 @@ class SessionExporter:
 
         self.dest.reload()
 
-    def initialize_files(self, subject_files=False, project_files=False):
+    def initialize_files(self, subject_files=False, project_files=False, overwrite=False):
         log.debug(f'Initializing {self.origin.id} files')
         if not self.dest:
             self.dest = self.find_or_create_dest()
@@ -327,7 +326,8 @@ class SessionExporter:
                                                               fw_client=self.client,
                                                               origin_container=self.origin_project.reload(),
                                                               dest_container=self.dest_proj.reload(),
-                                                              config=self.export_config)
+                                                              config=self.export_config,
+                                                              overwrite=overwrite)
             self.files.extend(proj_file_list)
 
         # subject files
@@ -336,14 +336,16 @@ class SessionExporter:
                                                               fw_client=self.client,
                                                               origin_container=self.origin.subject.reload(),
                                                               dest_container=self.dest.subject.reload(),
-                                                              config=self.export_config)
+                                                              config=self.export_config,
+                                                              overwrite=overwrite)
             self.files.extend(subj_file_list)
 
         # session files
         sess_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
                                                           fw_client=self.client, origin_container=self.origin,
                                                           dest_container=self.dest.reload(),
-                                                          config=self.export_config)
+                                                          config=self.export_config,
+                                                          overwrite=overwrite)
         self.files.extend(sess_file_list)
 
         self.origin = self.origin.reload()
@@ -359,13 +361,13 @@ class SessionExporter:
             tmp_acq_file_list = initialize_container_file_export(deid_profile=self.deid_profile,
                                                                  fw_client=self.client, origin_container=origin_acq,
                                                                  dest_container=dest_acq,
-                                                                 config=self.export_config
-                                                                 )
+                                                                 config=self.export_config,
+                                                                 overwrite=overwrite)
             self.files.extend(tmp_acq_file_list)
 
         return self.files
 
-    def local_file_export(self, overwrite=False):
+    def local_file_export(self):
         # De-identify
         for file_exporter in self.files:
             if file_exporter.state != 'error':
@@ -430,8 +432,8 @@ def export_session(
         template_dict=template
     )
 
-    session_exporter.initialize_files(subject_files=subject_files, project_files=project_files)
-    session_export_df = session_exporter.local_file_export(overwrite=overwrite)
+    session_exporter.initialize_files(subject_files=subject_files, project_files=project_files, overwrite=overwrite)
+    session_export_df = session_exporter.local_file_export()
     if len(session_export_df) >= 1:
         if csv_output_path:
             session_export_df.to_csv(csv_output_path, index=False)
@@ -574,6 +576,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
         error_count = _export_subject(subject_obj=container, project_files=project_files)
 
     elif container.container_type == 'session':
+        session_export_error = None
         with tempfile.TemporaryDirectory() as temp_dir:
             sess_template_path = template_path
             if isinstance(df, pd.DataFrame):
