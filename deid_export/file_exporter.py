@@ -221,7 +221,7 @@ class FileExporter:
         fw_object = fw_object.reload()
         return fw_object
 
-    @retry(max_retry=2)
+    @retry(max_retry=3)
     def reload(self):
         if self.state != 'error':
             try:
@@ -322,7 +322,7 @@ class FileExporter:
                 self.deid_path = deid_path
                 self.get_metadata_dict()
                 self.state = 'processed'
-
+    @retry(2)
     def upload(self):
         """
         If self.deid_file exists and no file conflicts are found for the dest parent container,

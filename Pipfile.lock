@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3d67b23328f51defb44611ec5752cc404c589f64f9730fe9bbd6362c3e02b66d"
+            "sha256": "42064b4d7946fda6a99f7f64c9b0e7301c401f68be65576ef2b43f43167ab645"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -47,7 +47,7 @@
         "flywheel-migration": {
             "editable": true,
             "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
-            "ref": "db54113652d6c7a9c69ac4e1f81495adf55a7a56"
+            "ref": "f98c9a7bab4a791333ba6cc6fdc6bdc5524b53a0"
         },
         "flywheel-sdk": {
             "hashes": [
@@ -375,10 +375,10 @@
         },
         "click": {
             "hashes": [
-                "sha256:2335065e6395b9e67ca716de5f7526736bfa6ceead690adf616d925bdc622b13",
-                "sha256:5b94b49521f6456670fdb30cd82a4eca9412788a93fa6dd6df72c94d5a8ff2d7"
+                "sha256:482f552f2d5452b9eeffc44165e8b790dd53f75bcce099a812b65e0357e860e2",
+                "sha256:91eb2c43db0254aaf3b14a3c4e0db914a900aa09bbc33c6e87ede4a8f7c969dc"
             ],
-            "version": "==7.0"
+            "version": "==7.1"
         },
         "colorama": {
             "hashes": [
@@ -707,6 +707,14 @@
                 "sha256:87716c2d2a7121198ebcb7ce7cccf6ce5e9ba539041cfbaeecfb641dc0bf6acc"
             ],
             "version": "==1.25.8"
+        },
+        "v": {
+            "hashes": [
+                "sha256:2d5a8f79a36aaebe62ef2c7068e3ec7f86656078202edabfdbf74715dc822d36",
+                "sha256:cd6b6b20b4a611f209c88bcdfb7211321f85662efb2bdd53a7b40314d0a84618"
+            ],
+            "index": "pypi",
+            "version": "==0.0.0"
         },
         "vistir": {
             "hashes": [
