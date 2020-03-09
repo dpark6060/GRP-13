@@ -14,7 +14,7 @@ v = {editable = true,version = "*"}
 
 [packages]
 flywheel-sdk = "~=11.0"
-flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "f98c9a7bab4a791333ba6cc6fdc6bdc5524b53a0"}
+flywheel-migration = {editable = true,git = "https://gitlab.com/flywheel-io/public/migration-toolkit.git",ref = "ac8a7c9222f8cab2ceb8e922ab21abb35e4d0423"}
 pyaml = "*"
 joblib = "*"
 pandas = "*"
