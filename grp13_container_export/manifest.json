@@ -1,7 +1,7 @@
 {
   "name": "grp13-container-export",
-  "label": "GRP-13: Anonymized/De-identified DICOM Export",
-  "description": "Template-based anonymization and export of DICOM files within a project. DICOM files within the source project will be anonymized (according to a required template) and exported to a specified project. Output is a csv file reporting the status of all exported items.",
+  "label": "GRP-13: Anonymized/De-identified File Export",
+  "description": "Template-based anonymization and export of files within a project. Files within the source project will be anonymized (according to a required template) and exported to a specified project. Output is a csv file reporting the status of all exported items.",
   "author": "Flywheel SSE",
   "maintainer": "Flywheel <support@flywheel.io>",
   "license": "Other",
