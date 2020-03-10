@@ -3,7 +3,7 @@ import hashlib
 import dotty_dict
 
 META_WHITELIST_DICT = {
-    'file': ('modality', 'type', 'classification', 'info'),
+    'file': ('classification', 'info', 'modality', 'type'),
     'acquisition': ('timestamp', 'timezone', 'uid', 'info'),
     'subject': ('firstname', 'lastname', 'sex', 'cohort', 'ethnicity', 'race', 'species', 'strain', 'info'),
     'session': ('age', 'operator', 'timestamp', 'timezone', 'uid', 'weight', 'info')

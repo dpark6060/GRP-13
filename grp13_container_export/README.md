@@ -170,11 +170,20 @@ for example, subject.sex. This is demonstrated below:
         whitelist:
           info: all
           metadata: all 
+      file:
+        whitelist:
+          info: 
+            - cats
+          metadata:
+            - classification
+            - modality
     ```
     With the above template subject.info.cats, subject.sex, subject.strain,
     session.info.cats, session.operator, session.weight, all 
-    acquisition.info fields, and all editable acquisition metadata would 
-    be propagated to the exported containers.
+    acquisition.info fields, all editable acquisition metadata, file.info.cats, file.classification and file.modality would 
+    be propagated to the exported containers. File info.header values cannot be 
+    exported.
+   
     
     _NOTE:_ metadata fields that can be propagated are defined by the dictionary
     below which reflects container metadata outside of info that can be
@@ -182,6 +191,7 @@ for example, subject.sex. This is demonstrated below:
 
     ``` python
     META_WHITELIST_DICT = {
+        'file': ['classification', 'info', 'modality', 'type'],
         'acquisition': ['timestamp', 'timezone', 'uid'],
         'subject': ['firstname', 'lastname', 'sex', 'cohort', 'ethnicity', 'race', 'species', 'strain'],
         'session': ['age', 'operator', 'timestamp', 'timezone', 'uid', 'weight']
