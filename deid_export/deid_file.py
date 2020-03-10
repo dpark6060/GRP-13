@@ -151,6 +151,30 @@ def return_diff_files(original_dir, modified_dir):
     return diff_files
 
 
+def deidentify_file(deid_profile, file_path, output_directory):
+    """
+
+    Args:
+        deid_profile(DeIdProfile): the de-identification profile to use to process the file
+        file_path: the path to the file to be de-identified
+        output_directory(str): the directory to which to output the de-identified file
+
+    Returns:
+        str: path to the de-identified file
+    """
+    dirname, basename = os.path.split(file_path)
+    with osfs.OSFS(dirname) as src_fs:
+        with osfs.OSFS(output_directory) as dst_fs:
+            deid_profile.process_file(src_fs=src_fs, src_file=basename, dst_fs=dst_fs)
+            deid_files = [dst_fs.getsyspath(fp) for fp in dst_fs.walk.files()]
+    if deid_files:
+        deid_path = deid_files[0]
+    else:
+        deid_path = ''
+
+    return deid_path
+
+
 def deidentify_files(profile_path, input_directory, profile_name='dicom', file_list=None,
                      output_directory=None, date_increment=None):
     """

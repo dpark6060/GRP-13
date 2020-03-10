@@ -1,11 +1,14 @@
-#!/usr/bin/env python
-import tempfile
+#!/usr/bin/env python3
+
 import argparse
 import copy
-import pandas as pd
-from pathlib import Path
-from ruamel.yaml import load, safe_dump, Loader, dump
 import logging
+from pathlib import Path
+import tempfile
+
+from flywheel_migration import deidentify
+import pandas as pd
+from ruamel.yaml import load, safe_dump, Loader, dump
 
 DEFAULT_REQUIRED_COLUMNS = ['subject.code']
 DEFAULT_SUBJECT_CODE_COL = 'subject.code'
@@ -40,6 +43,13 @@ def find_profile_element(d, target):
             return find_profile_element(d[tps[0]], '.'.join(tps[1:]))
 
 
+def _add_zip_member_validation(deid_template):
+    if 'zip' in deid_template.keys():
+        if 'validate-zip-members' not in deid_template['zip'].keys():
+            deid_template['zip']['validate-zip-members'] = True
+    return deid_template
+
+
 def update_deid_profile(deid_template, updates):
     """Return the updated deid profile
 
@@ -67,7 +77,9 @@ def update_deid_profile(deid_template, updates):
                 el[key_or_fieldinfo] = r_type(updates.get(k, el[key_or_fieldinfo]))
         except KeyError:
             logger.info(f'{k} did not match anything in template')
-
+    if 'only-config-profiles' not in new_deid.keys():
+        new_deid['only-config-profiles'] = True
+    new_deid = _add_zip_member_validation(new_deid)
     return new_deid
 
 
@@ -156,6 +168,23 @@ def validate(deid_template_path,
             logger.warning(f'Column `{k}` not found in DeID template')
 
     return df
+
+
+def load_deid_profile(template_dict):
+    """
+    Load the flywheel.migration DeIdProfile at the profile_path
+
+    Args:
+        template_dict(dict): a dictionary loaded from the de-identification template file that will be provided as
+            config to DeIdProfile
+
+    Returns:
+        flywheel_migration.deidentify.DeIdProfile, export_config
+    """
+    deid_profile = deidentify.DeIdProfile()
+    deid_profile.load_config(template_dict)
+    export_config = template_dict.get('export', dict())
+    return deid_profile, export_config
 
 
 def get_updated_template(df,

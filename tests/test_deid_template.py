@@ -13,15 +13,17 @@ def test_can_update_deid_dicom_profile():
 
     with open(DATA_ROOT/'example1-deid-profile.yaml') as fid:
         config = yaml.load(fid, Loader=yaml.SafeLoader)
+        config['zip'] = {}
     replace_with = {
         'dicom.date-increment': -20,
         'dicom.fields.PatientID.replace-with': 'TEST',
         'dicom.fields.PatientBirthDate.remove': False,
-        'export.subject.code': 'TEST',
+        'export.subject.code': 'TEST'
     }
 
     new_config = update_deid_profile(config, replace_with)
-
+    assert new_config['only-config-profiles'] is True
+    assert new_config['zip']['validate-zip-members'] is True
     assert new_config['dicom']['date-increment'] == -20
     assert new_config['dicom']['fields'][0]['remove'] is False
     assert new_config['dicom']['fields'][1]['replace-with'] == 'TEST'
