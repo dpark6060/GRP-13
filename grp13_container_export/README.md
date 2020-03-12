@@ -496,7 +496,7 @@ preparation for export.
 level and provides the following:
     * Files:
         * A de-identification template specifying how to
-        de-identify/anonymize the file
+        de-identify/anonymize the each file type
         * an optional csv that contains a column that maps to a
         Flywheel session or subject metadata field and columns that
         specify values with which to replace DICOM header tags
@@ -510,8 +510,7 @@ level and provides the following:
 associated with the destination analysis parent container.
     * <container>.info.export.origin_id is used to find containers in
     the export project
-1. The gear will attempt to download all files of the specified type,
-de-identify them per the template provided, and upload them to the
+1. The gear will attempt to download all files that match the `file-filter` list for any of the file profiles within the template, de-identify them per the template with matching file-filter, and upload them to the
 destination container
 
 1. The  gear will then write an output file reporting the status files
