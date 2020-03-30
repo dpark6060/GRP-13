@@ -39,8 +39,13 @@ def find_profile_element(d, target):
     else:
         if tps[0] == 'fields':
             return d['fields'], '.'.join(tps[1:]), True
+        if tps[0] == 'groups':
+            return d['groups'], '.'.join(tps[1:]), True
         else:
-            return find_profile_element(d[tps[0]], '.'.join(tps[1:]))
+            if isinstance(d, list):
+                return find_profile_element(d[int(tps[0])], '.'.join(tps[1:]))
+            else:
+                return find_profile_element(d[tps[0]], '.'.join(tps[1:]))
 
 
 def _add_zip_member_validation(deid_template):

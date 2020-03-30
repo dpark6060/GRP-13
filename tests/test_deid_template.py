@@ -85,3 +85,15 @@ def test_process_csv():
             assert profile['export']['subject']['code'] == 'FLYWHEEL'
             assert profile['dicom']['date-increment'] == -15
             assert profile['dicom']['fields'][0]['remove'] is True
+
+
+def test_can_update_deid_dicom_profile_filename_section():
+
+    with open(DATA_ROOT/'example2-deid-profile-with-filenames.yaml') as fid:
+        config = yaml.load(fid, Loader=yaml.SafeLoader)
+    replace_with = {
+        'dicom.filenames.0.groups.subject.replace-with': 'TEST'
+    }
+
+    new_config = update_deid_profile(config, replace_with)
+    assert new_config['dicom']['filenames'][0]['groups'][0]['replace-with'] == 'TEST'

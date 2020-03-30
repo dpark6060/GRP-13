@@ -11,7 +11,7 @@ propagate/modify DICOM metadata.
 ### deid_template (required)
 This is a YAML file that describes the protocol for de-identifying
 input_file. This file covers all of the same functionality of Flywheel
-CLI de-identifiction.
+CLI de-identification.
 An example deid_template.yaml looks like this:
 
 ``` yaml
@@ -353,6 +353,21 @@ used to set subject.code for destination subjects. If
 used to set subject.code for destination subjects. 
 `dicom.fields.PatientID.replace-with` is required to set PatientID in
 DICOM files on a subject-to-subject basis** 
+* Filenames groups can be accessible in the same way. For instance, for 
+a template defined as:
+    ```
+    dicom:
+        filenames:
+            - output: '{filenameuid}.dcm'
+              input-regex: '^(?P<filenameuid>[\w.]+).dcm$'
+              groups:
+                - name: filenameuid
+                  replace-with: XXX
+    ```
+  XXX can be populated by the csv by defining a column as 
+  `dicom.filenames.0.groups.filenameuid.replace-with` with the corresponding
+  values.
+
 
 Let's walk through an example pairing of subject_csv and deid_template
 to illustrate. 
