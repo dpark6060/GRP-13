@@ -266,7 +266,7 @@ def initialize_container_file_export(fw_client, deid_profile, origin_container, 
     file_exporter_list = list()
     for container_file in origin_container.files:
 
-        if matches_file(deid_profile, container_file.name):
+        if matches_file(deid_profile, container_file):
             log.debug(
                 f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
             tmp_file_exporter = FileExporter(fw_client=fw_client, origin_parent=origin_container,
