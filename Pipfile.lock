@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8bf84c2df4159aae32479e607af8595cdb76b200ab4ce563729fbe7f1e447221"
+            "sha256": "f89567ddce86859ebe3058954bc386ed4fe17775c3f171de4788723943c25d67"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -47,14 +47,14 @@
         "flywheel-migration": {
             "editable": true,
             "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
-            "ref": "ac8a7c9222f8cab2ceb8e922ab21abb35e4d0423"
+            "ref": "b72166f71d74592c703e592e9bb68d75929b9a07"
         },
         "flywheel-sdk": {
             "hashes": [
-                "sha256:2d06fcfa996ea9db432de9a50f0af453e253cc5e4b6031bcca4d6f4b86cad69d"
+            	"sha256:9414428920d11a84fef369bb8757a32d6f2eee00e8b59773ce5740013f87d22f"
             ],
             "index": "pypi",
-            "version": "==11.2.3"
+            "version": "==11.2.5"
         },
         "fs": {
             "hashes": [
@@ -528,10 +528,10 @@
         },
         "pep517": {
             "hashes": [
-                "sha256:5ce351f3be71d01bb094d63253854b6139931fcaba8e2f380c02102136c51e40",
-                "sha256:882e2eeeffe39ccd6be6122d98300df18d80950cb5f449766d64149c94c5614a"
+                "sha256:576c480be81f3e1a70a16182c762311eb80d1f8a7b0d11971e5234967d7a342c",
+                "sha256:8e6199cf1288d48a0c44057f112acf18aa5ebabbf73faa242f598fbe145ba29e"
             ],
-            "version": "==0.8.1"
+            "version": "==0.8.2"
         },
         "pip-shims": {
             "hashes": [
@@ -651,10 +651,11 @@
         },
         "requirementslib": {
             "hashes": [
-                "sha256:0a22cdfd482de56478973ff0dd393fa4c76861d0cef3b259cd2e8a4a4bf40a15",
-                "sha256:470f788ddf370e8000dd25907ad6a19c9ca1f5e24e18e0bb3a4fe280cc20e31a"
+                "sha256:d29a49e72f8d3b0881c3af40215247cc84c178e6a1bb478182a6cfb51e17e9e6",
+                "sha256:d853840cde15a1adacac4e00b129a55e3c5c524f4b0ac88935502dd59823823f"
             ],
-            "version": "==1.5.4"
+            "version": "==1.5.5"
+
         },
         "six": {
             "hashes": [

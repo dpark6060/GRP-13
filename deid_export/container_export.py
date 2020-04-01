@@ -39,6 +39,31 @@ def hash_string(input_str):
     return output_hash
 
 
+def matches_file(deid_profile, file_obj):
+    """
+
+    Args:
+        deid_profile(flywheel_migration.deidentify.DeIdProfile): the de-identification profile
+        file_obj(flywheel.FileEntry or dict): the flywheel file object
+
+    Returns:
+        bool: whether the profile supports the file
+
+    """
+    return_bool = False
+    file_type = file_obj.get('type')
+    file_name = file_obj.get('name')
+    if file_type == 'dicom' and deid_profile.get_file_profile('dicom'):
+        return_bool = True
+    else:
+        for profile in deid_profile.file_profiles:
+            if profile.name != 'dicom' and profile.matches_file(file_name):
+                return_bool = True
+                break
+
+    return return_bool
+
+
 def load_template_dict(template_file_path):
     """
     Determines whether the file at template_file_path is JSON or YAML and returns the Python dictionary representation
@@ -228,8 +253,8 @@ def initialize_container_file_export(fw_client, deid_profile, origin_container, 
     Initializes a list of FileExporter objects for the origin_container/dest_container combination
 
     Args:
-        config:
-        deid_profile(flywheel_migration.deidentify.DeIdProfile):
+        config: the export configuration dictionary
+        deid_profile(flywheel_migration.deidentify.DeIdProfile): the de-identification profile
         fw_client (fw.Client): an instance of the flywheel client
         origin_container (flywheel.<Container>): the container with files to be exported
         dest_container (flywheel.<Container>): the container to which files are to be exported
@@ -241,7 +266,7 @@ def initialize_container_file_export(fw_client, deid_profile, origin_container, 
     file_exporter_list = list()
     for container_file in origin_container.files:
 
-        if deid_profile.matches_file(container_file.name):
+        if matches_file(deid_profile, container_file.name):
             log.debug(
                 f'Initializing {origin_container.container_type} {origin_container.id} file {container_file.name}')
             tmp_file_exporter = FileExporter(fw_client=fw_client, origin_parent=origin_container,
@@ -253,7 +278,6 @@ def initialize_container_file_export(fw_client, deid_profile, origin_container, 
             continue
 
     return file_exporter_list
-
 
 
 class SessionExporter:
