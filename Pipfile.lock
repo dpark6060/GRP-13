@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f96dad92b097d08175c6c57b7536c1c56765d774f76f3e692bef2bc169daf508"
+            "sha256": "ca21cd321dd25734f3a271fbcca28da8532c0632cec93d075bcb6bb8de7e5c69"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -47,7 +47,7 @@
         "flywheel-migration": {
             "editable": true,
             "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
-            "ref": "18ef68eda8335e29d916842e01e74941a57e2d95"
+            "ref": "e63d8b0086ddfe6ae5d53c22e5606b17b4f22509"
         },
         "flywheel-sdk": {
             "hashes": [
@@ -194,11 +194,11 @@
         },
         "pyaml": {
             "hashes": [
-                "sha256:9914879e6ac5cbf09b8cd5d3ba09e241ffcfd91c689cddc8d8b66a68c1c7e640",
-                "sha256:b077066dec4a1a834e376bd69b8b38677c69c62b270160cde35d76dc40ca9ec1"
+                "sha256:29a5c2a68660a799103d6949167bd6c7953d031449d08802386372de1db6ad71",
+                "sha256:67081749a82b72c45e5f7f812ee3a14a03b3f5c25ff36ec3b290514f8c4c4b99"
             ],
             "index": "pypi",
-            "version": "==20.3.1"
+            "version": "==20.4.0"
         },
         "pydicom": {
             "hashes": [
