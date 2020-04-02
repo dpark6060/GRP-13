@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from deid_export.container_export import hash_string, load_template_dict, quote_numeric_string
+from deid_export.container_export import hash_string, load_template_dict, quote_numeric_string, matches_file
+from deid_export.deid_template import load_deid_profile
 
 DATA_ROOT = Path(__file__).parent/'data'
 
@@ -40,3 +41,17 @@ def test_quote_numeric_string():
     in_str = '1.1.1'
     out_str = quote_numeric_string(in_str)
     assert out_str == '1.1.1'
+
+
+def test_matches_file():
+    template_dict = load_template_dict(str(DATA_ROOT / 'example-3-deid-profile.yaml'))
+    template_dict['dicom']['file-filter'] = []
+    deid_profile, _ = load_deid_profile(template_dict)
+    assert matches_file(deid_profile, {'type': 'dicom'})
+    assert matches_file(deid_profile, {'name': 'test.jpg'})
+    template_dict['jpg']['file-filter'] = []
+    deid_profile, _ = load_deid_profile(template_dict)
+    assert not matches_file(deid_profile, {'name': 'test.jpg'})
+    template_dict.pop('dicom')
+    deid_profile, _ = load_deid_profile(template_dict)
+    assert not matches_file(deid_profile, {'type': 'dicom', 'name': 'test.dcm'})
