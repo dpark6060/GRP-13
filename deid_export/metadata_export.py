@@ -44,7 +44,7 @@ def export_config_to_whitelist(export_config):
         if isinstance(metdadata_list, list):
             whitelist.extend(metdadata_list)
     # allow all fields provided as a list with info fields prefixed with 'info.'
-    elif isinstance(whitelist, list):
+    elif isinstance(whitelist_obj, list):
         whitelist.extend(whitelist_obj)
     else:
         pass

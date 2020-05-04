@@ -23,6 +23,9 @@ def test_export_config_to_whitelist():
     export_config = {'whitelist': expected_output}
     output = export_config_to_whitelist(export_config)
     assert output == expected_output
+    export_config = {'code': 'FLYWHEEL'}
+    output = export_config_to_whitelist(export_config)
+    assert output == []
 
 
 def test_filter_metadata_list():
