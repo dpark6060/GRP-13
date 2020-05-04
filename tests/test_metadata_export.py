@@ -1,3 +1,4 @@
+import flywheel
 from deid_export.metadata_export import *
 
 
@@ -34,9 +35,11 @@ def test_filter_metadata_list():
 
 def test_get_container_metadata():
     info_dict = {'python': {'spam': 'eggs'}, 'header': {'dicom': {'PatientID': 'FLYWHEEL'}}}
-    container_dict = {'container_type': 'file', 'id': 'test_id', 'info': info_dict, 'modality': 'MR'}
+    file = flywheel.FileEntry(type='file', id='test_id', info=info_dict, modality='MR')
+    file._parent = flywheel.Acquisition(parents=flywheel.ContainerParents(project='project_id'))
     export_dict = {'file': {'whitelist': ['info.python.spam', 'modality', 'info.header.dicom.PatientID']}}
-    expected_output = {'info': {'python': {'spam': 'eggs'}, 'export': {'origin_id': hash_string('test_id')}},
+    expected_output = {'info': {'python': {'spam': 'eggs'},
+                                'export': {'origin_id': util.hash_value('test_id', salt='project_id')}},
                        'modality': 'MR'}
-    output = get_container_metadata(origin_container=container_dict, export_dict=export_dict)
+    output = get_container_metadata(origin_container=file, export_dict=export_dict)
     assert output == expected_output

@@ -1,16 +1,9 @@
 import pytest
 from pathlib import Path
-from deid_export.container_export import hash_string, load_template_dict, quote_numeric_string, matches_file
+from deid_export.container_export import load_template_dict, quote_numeric_string, matches_file
 from deid_export.deid_template import load_deid_profile
 
 DATA_ROOT = Path(__file__).parent/'data'
-
-
-def test_hash_string():
-    input_str = 'just a test'
-    output_hash = hash_string('just a test')
-    assert len(output_hash) == 40
-    assert not input_str == output_hash
 
 
 def test_can_load_template_file():

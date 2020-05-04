@@ -282,7 +282,7 @@ chunks [here](https://en.wikipedia.org/wiki/Portable_Network_Graphics)). Example
 11. De-identification of ZIP archives (including DICOM zip archives) is now supported (INCLUDING DICOM ARCHIVES).
 comment is currently the only specific field to archive. Filenames can use attributes of their 
 member files such as DICOM. The attributes of the first successfully de-identified file of each type will
-be used. The `hash-subdirectories` option will apply an md5 hash to any subdirectories within the archive.
+be used. The `hash-subdirectories` option will apply an sha256 hash to any subdirectories within the archive.
 By default, the export of an zip archive will fail if any member files cannot be de-identified. If you would like
 to export partial zip archives, then `validate-zip-members: false` can be provided. 
 ```yaml

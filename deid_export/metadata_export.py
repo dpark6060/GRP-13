@@ -1,5 +1,4 @@
-import hashlib
-
+from flywheel_migration import util
 import dotty_dict
 
 META_WHITELIST_DICT = {
@@ -10,19 +9,6 @@ META_WHITELIST_DICT = {
 }
 
 BLACKLIST = {'info.header'}
-
-
-def hash_string(input_str):
-    """
-    Hashes an input string using sha1
-    Args:
-        input_str (str): a string to be hashed
-
-    Returns:
-        (str): the output of sha1 hashing on the hexdigest of input_str
-    """
-    output_hash = hashlib.sha1(input_str.encode()).hexdigest()
-    return output_hash
 
 
 def get_whitelist_dict(input_dict, whitelist, blacklist=None):
@@ -78,7 +64,7 @@ def filter_metadata_list(container_type, metadata_list, metadata_wl_dict=None):
 
 
 def get_container_metadata(origin_container, export_dict):
-    container_type = origin_container.get('container_type')
+    container_type = origin_container.container_type
     container_config = export_dict.get(container_type)
     metadata_dot_dict = dotty_dict.dotty()
     if isinstance(container_config, dict):
@@ -86,10 +72,15 @@ def get_container_metadata(origin_container, export_dict):
         if metadata_list:
             metadata_list = filter_metadata_list(container_type=container_type, metadata_list=metadata_list)
         if metadata_list:
-            metadata_dict = get_whitelist_dict(input_dict=origin_container, whitelist=metadata_list)
+            metadata_dict = get_whitelist_dict(input_dict=origin_container.to_dict(), whitelist=metadata_list)
             if metadata_dict:
                 metadata_dot_dict = dotty_dict.dotty(metadata_dict)
     origin_container_id = origin_container.get('id') or origin_container.get('_id')
-    metadata_dot_dict['info.export.origin_id'] = hash_string(origin_container_id)
+    if container_type == 'file':
+        project_id = origin_container.parent.parents.project
+    else:
+        project_id = origin_container.parents.project
+    metadata_dot_dict['info.export.origin_id'] = util.hash_value(origin_container_id,
+                                                                 salt=project_id)
     output_dict = metadata_dot_dict.to_dict()
     return output_dict
