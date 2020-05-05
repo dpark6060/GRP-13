@@ -20,23 +20,10 @@ from deid_export.retry import retry
 from deid_export.metadata_export import get_container_metadata
 from deid_export.file_exporter import FileExporter
 from deid_export import deid_template
-from flywheel_migration import deidentify
+from flywheel_migration import deidentify, util
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
-
-
-def hash_string(input_str):
-    """
-    Hashes an input string using sha1
-    Args:
-        input_str (str): a string to be hashed
-
-    Returns:
-        (str): the output of sha1 hashing on the hexdigest of input_str
-    """
-    output_hash = hashlib.sha1(input_str.encode()).hexdigest()
-    return output_hash
 
 
 def matches_file(deid_profile, file_obj):
@@ -174,7 +161,7 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
 def find_or_create_subject_session(origin_session, dest_subject, export_config=None):
     """
     Searches the destination subject (dest_subject) for a session with with label matching origin_session.label
-        (or 'label' from session_config, if provided) and info.export.origin_id = hash_string(origin_session.id)
+        (or 'label' from session_config, if provided) and info.export.origin_id = util.hash_value(origin_session.id)
         If found, the destination session metadata is updated to match the whitelisted metadata of origin_session.
         Otherwise, a new subject is created with metadata matching the whitelisted metadata for origin_session.
     Args:
@@ -193,7 +180,7 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
     new_label = session_config.get('label', origin_session.label)
     query = (
         f'label={quote_numeric_string(new_label)},'
-        f'info.export.origin_id="{hash_string(origin_session.id)}"'
+        f'info.export.origin_id="{util.hash_value(origin_session.id, salt=origin_session.parents.project)}"'
     )
     dest_session = dest_subject.sessions.find_first(query)
     # Copy over metadata as specified
@@ -212,7 +199,7 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
 def find_or_create_session_acquisition(origin_acquisition, dest_session, export_config=None):
     """
     Searches the destination session (dest_session) for an acquisition with label matching origin_acquisition.label
-        (or 'label' from acquisition_config, if provided) and info.export.origin_id = hash_string(origin_acquisition.id)
+        (or 'label' from acquisition_config, if provided) and info.export.origin_id = util.hash_value(origin_acquisition.id)
         If found, the destination acquisition metadata is updated to match the whitelisted metadata of
         origin_acquisition. Otherwise, a new subject is created with metadata matching the whitelisted metadata for
         origin_acquisition.
@@ -230,7 +217,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
         export_config = {'acquisition': {}}
     query = (
         f'label={quote_numeric_string(origin_acquisition.label)},'
-        f'info.export.origin_id="{hash_string(origin_acquisition.id)}"'
+        f'info.export.origin_id="{util.hash_value(origin_acquisition.id, salt=origin_acquisition.parents.project)}"'
     )
     dest_acquisition = dest_session.acquisitions.find_first(query)
     # Copy over metadata as specified
