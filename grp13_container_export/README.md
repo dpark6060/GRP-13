@@ -327,46 +327,37 @@ dicom:
 ### subject_csv (optional)
 The subject_csv facilitates subject-specific configuration of 
 de-identification templates. This is a csv file that contains the column
-`subject.code` with unique values correspond to the subject.code 
+`subject.label` with unique values correspond to the subject.label 
 values in the project to be exported. If a subject in the project to be 
-exported is not listed in `subject.code` in the provided subject_csv 
-this subject will not be exported. 
+exported is not listed in `subject.label` in the provided subject_csv 
+this subject will not be exported.
 
 #### Subject-level customization with subject_csv and deid_template
 
 Requirements:
 * To update subject fields, the fields must both be represented in the 
-subject_csv and deid_template files. 
+subject_csv as column header and deid_template as jinja variable 
+(i.e `"{{ var_name }}"`). 
 * If a field is represented in both the deid_template and the 
 subject_csv, the value in the deid_template will be replaced with the 
 value listed in the corresponding column of the subject_csv for each
-subject that has a code listed in subject.code.
+subject that has a label listed in subject.label.
 * Fields represented in the deid_template but not the subject_csv will 
 be the same for all subjects. 
-* subject.code can be modified by including an export.subject.code
-column in subject_csv that contains unique values to be applied to 
-subjects in the destination project.
-* **NOTE: If `dicom.fields.PatientID.replace-with` is provided without 
-`export.subject.code`, `dicom.fields.PatientID.replace-with` will be 
-used to set subject.code for destination subjects. If 
-`export.subject.code` is provided, then it `export.subject.code` will be 
-used to set subject.code for destination subjects. 
-`dicom.fields.PatientID.replace-with` is required to set PatientID in
-DICOM files on a subject-to-subject basis** 
 * Filenames groups can be accessible in the same way. For instance, for 
 a template defined as:
     ```
     dicom:
+        date-increment: "{{ DATE_INCREMENT }}"
         filenames:
-            - output: '{filenameuid}.dcm'
-              input-regex: '^(?P<filenameuid>[\w.]+).dcm$'
+            - output: '{{ SUBJECT_ID }}_{reg_date}.dcm'
+              input-regex: '^(?P<reg_date>\d+).dcm$'
               groups:
-                - name: filenameuid
-                  replace-with: XXX
+                - name: reg_date
+                  increment-date: True
     ```
-  XXX can be populated by the csv by defining a column as 
-  `dicom.filenames.0.groups.filenameuid.replace-with` with the corresponding
-  values.
+  `{{ SUBJECT_ID  }}` and `{{ DATE_INCREMENT }}` can be populated by the csv 
+  by defining a column as SUBJECT_ID and DATE_INCREMENT with the corresponding values.
 
 
 Let's walk through an example pairing of subject_csv and deid_template
@@ -374,7 +365,7 @@ to illustrate.
 
 The following table represents subject_csv (../tests/data/example-csv-mapping.csv):
 
-|subject.code|dicom.date-increment|dicom.fields.PatientID.replace-with|dicom.fields.PatientBirthDate.remove|
+|subject.label|DATE_INCREMENT|SUBJECT_ID|PATIENT_BD_BOOL|
 |------------|--------------------|-----------------------------------|------------------------------------|
 |001         |-15                 |Patient_IDA                        |false                               |
 |002         |-20                 |Patient_IDB                        |true                                |
@@ -384,16 +375,16 @@ The deid_template:
 ``` yaml
 dicom:
   # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
-  date-increment: -10
+  date-increment: "{{ DATE_INCREMENT }}"
   # # since example-csv-mapping.csv doesn't define dicom.remove-private-tags, all subjects will have private tags removed
   remove-private-tags: true
   fields:
     - name: PatientBirthDate
       # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
-      remove: true
+      remove: "{{ PATIENT_BD_BOOL }}"
     - name: PatientID
       # replace-with can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
-      replace-with: FLYWHEEL
+      replace-with: "{{ SUBJECT_ID }}"
 export:
   session:
     whitelist:
@@ -404,7 +395,7 @@ export:
         - weight
   subject:
     # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
-    code: FLYWHEEL
+    code: "{{ SUBJECT_ID }}"
     whitelist:
       info:
         - cats
@@ -413,7 +404,7 @@ export:
         - strain
 ```
 The resulting template for subject 003 given the above would be: 
-The deid_template:
+
 ``` yaml
 dicom:
   # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
@@ -434,7 +425,7 @@ export:
         - weight
   subject:
     # code can be any string value since export.subject.code is defined in example-csv-mapping.csv
-    code: Patient_IDC
+    label: Patient_IDC
     whitelist:
       info:
         - cats

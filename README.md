@@ -9,3 +9,7 @@ Refer to the following READMEs for more information on their use:
 for the project level gear
 * [README.md](https://github.com/flywheel-apps/GRP-13/tree/master/grp13_utility)
 for the utility gear 
+
+# To build docker image
+
+From within `grp13_container_export`, run `docker build -t <image>:<tag> ..`
