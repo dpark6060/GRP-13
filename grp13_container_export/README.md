@@ -395,7 +395,7 @@ export:
         - weight
   subject:
     # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
-    code: "{{ SUBJECT_ID }}"
+    label: "{{ SUBJECT_ID }}"
     whitelist:
       info:
         - cats
@@ -424,7 +424,7 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since export.subject.code is defined in example-csv-mapping.csv
+    # code can be any string value since export.subject.label is defined in example-csv-mapping.csv
     label: Patient_IDC
     whitelist:
       info:

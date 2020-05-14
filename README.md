@@ -10,6 +10,7 @@ for the project level gear
 * [README.md](https://github.com/flywheel-apps/GRP-13/tree/master/grp13_utility)
 for the utility gear 
 
-# To build docker image
+# Building
 
-From within `grp13_container_export`, run `docker build -t <image>:<tag> ..`
+To build the docker image for that gear, from within `grp13_container_export`, 
+run `docker build -t <image>:<tag> ..`
