@@ -327,7 +327,7 @@ dicom:
 ### subject_csv (optional)
 The subject_csv facilitates subject-specific configuration of 
 de-identification templates. This is a csv file that contains the column
-`subject.label` with unique values correspond to the subject.label 
+`subject.label` with unique values corresponding to the subject.label 
 values in the project to be exported. If a subject in the project to be 
 exported is not listed in `subject.label` in the provided subject_csv 
 this subject will not be exported.
@@ -336,29 +336,14 @@ this subject will not be exported.
 
 Requirements:
 * To update subject fields, the fields must both be represented in the 
-subject_csv as column header and deid_template as jinja variable 
-(i.e `"{{ var_name }}"`). 
+subject_csv as column header and in the deid_template as jinja variable 
+(i.e `"{{ var_name }}"`).
 * If a field is represented in both the deid_template and the 
 subject_csv, the value in the deid_template will be replaced with the 
 value listed in the corresponding column of the subject_csv for each
-subject that has a label listed in subject.label.
-* Fields represented in the deid_template but not the subject_csv will 
+subject that has a label listed in the subject.label column.
+* Fields represented in the deid_template but not in the subject_csv will 
 be the same for all subjects. 
-* Filenames groups can be accessible in the same way. For instance, for 
-a template defined as:
-    ```
-    dicom:
-        date-increment: "{{ DATE_INCREMENT }}"
-        filenames:
-            - output: '{{ SUBJECT_ID }}_{reg_date}.dcm'
-              input-regex: '^(?P<reg_date>\d+).dcm$'
-              groups:
-                - name: reg_date
-                  increment-date: True
-    ```
-  `{{ SUBJECT_ID  }}` and `{{ DATE_INCREMENT }}` can be populated by the csv 
-  by defining a column as SUBJECT_ID and DATE_INCREMENT with the corresponding values.
-
 
 Let's walk through an example pairing of subject_csv and deid_template
 to illustrate. 
@@ -394,7 +379,6 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
     label: "{{ SUBJECT_ID }}"
     whitelist:
       info:
@@ -424,7 +408,6 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since export.subject.label is defined in example-csv-mapping.csv
     label: Patient_IDC
     whitelist:
       info:
