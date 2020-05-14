@@ -70,9 +70,11 @@ def load_template_dict(template_file_path):
             with open(template_file_path, 'r') as f:
                 template = json.load(f)
         elif ext in ['.yml', '.yaml']:
+            deid_template.update_deid_profile(template_file_path,
+                                              dict(),
+                                              dest_path=template_file_path)
             with open(template_file_path, 'r') as f:
                 template = yaml.load(f, Loader=yaml.FullLoader)
-        template = deid_template.update_deid_profile(template, dict())
         return template
     except ValueError:
         log.exception(f'Unable to load template at: {template_file_path}')
@@ -500,19 +502,21 @@ def get_session_error_df(fw_client, session_obj, error_msg, deid_profile, projec
 
 
 # TODO: incorporate filetype list
-def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None, overwrite=False,
-                     subject_csv_path=None, new_code_col=deid_template.DEFAULT_NEW_SUBJECT_CODE_COL,
+def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None,
+                     overwrite=False, subject_csv_path=None,
+                     new_code_loc=deid_template.DEFAULT_NEW_SUBJECT_LOC,
                      old_code_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
     container = fw_client.get(container_id).reload()
 
     template_obj = None
     df = None
     error_count = 0
-    template_obj = load_template_dict(template_path)
+    # template_obj = load_template_dict(template_path)
 
     if subject_csv_path and template_obj:
         df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
-                                    subject_code_col=old_code_col, new_subject_code_col=new_code_col)
+                                    subject_label_col=old_code_col,
+                                    new_subject_label_loc=new_code_loc)
 
     def _export_session(session_id, session_template_path, project_files=False,
                         subject_files=False, sess_error_msg=None):
@@ -546,8 +550,11 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
         subj_template_path = os.path.join(directory_path, f'{subject_obj.id}_{os.path.basename(template_path)}')
         try:
             subj_template_path = deid_template.get_updated_template(
-                df=df, deid_template=template_obj, subject_code=subject_obj.code,
-                subject_code_col=old_code_col, dest_template_path=subj_template_path)
+                df=df,
+                deid_template_path=template_path,
+                subject_code=subject_obj.code,
+                subject_code_col=old_code_col,
+                dest_template_path=subj_template_path)
             error_msg = None
         except Exception as e:
             error_msg = f'An exception occured when creating subject template for {subject.code}: {e}'

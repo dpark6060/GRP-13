@@ -19,6 +19,7 @@ pyaml = "*"
 joblib = "*"
 pandas = "*"
 dotty-dict = "*"
+jinja2 = "*"
 
 [requires]
 python_version = "3.8"
