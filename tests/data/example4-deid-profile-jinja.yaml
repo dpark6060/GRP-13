@@ -1,21 +1,23 @@
 dicom:
   # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
-  date-increment: "{{ DATE_INCREMENT}}"
+  date-increment: '{{ DATE_INCREMENT }}'
   # since example-csv-mapping.csv doesn't define dicom.remove-private-tags, all subjects will have private tags removed
   remove-private-tags: true
   filenames:
-    - output: '{subject}.dcm'
-      input-regex: '^(?P<notused>\w+)-(?P<subject>\d{4}-\d{2}-\d{2}).dcm$'
+    - output: "{{ SUBJECT_ID }}.dcm"
+      input-regex: '^\d{4}-\d{2}-\d{2}.dcm$'
+    - output: "{{ SUBJECT_ID }}_{reg_date}.dcm"
+      input-regex: '^(?P<reg_date>\d+).dcm$'
       groups:
-        - name: subject
-          replace-with: "{{ SUBJECT_ID }}"
+        - name: reg_date
+          increment-date: False
   fields:
     - name: PatientBirthDate
       # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
       remove: "{{ PATIENT_BD_BOOL }}"
     - name: PatientID
       # replace-with can be any string value since dicom.fields.PatientID.replace-with defined in example-csv-mapping.csv
-      replace-with: "{{ SUBJECT_ID }}"
+      replace-with: '{{ SUBJECT_ID }}'
 
 zip: {}
 

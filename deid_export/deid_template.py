@@ -72,9 +72,10 @@ def update_deid_profile(deid_template_path, updates, dest_path=None):
     if updates:
         with open(load_path, 'r') as fp:
             deid_template_str = fp.read()
-            # remove quote around jinja var to allow for casting infered from dataframe
-            deid_template_str = deid_template_str.replace('"{{', '{{')
-            deid_template_str = deid_template_str.replace('}}"', '}}')
+            # remove quote around jinja var to allow for casting inferred from dataframe
+            deid_template_str = re.sub(r'(?:\"|\'){{([^{}]+)}}(?:\"|\')',
+                                       '{{ \g<1> }}',
+                                       deid_template_str)
         env = Environment()
         jinja_template = env.from_string(deid_template_str)
         with open(dest_path, 'w') as fp:

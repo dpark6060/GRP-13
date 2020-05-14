@@ -84,11 +84,13 @@ def test_process_csv():
 
 
 def test_can_update_deid_dicom_profile_filename_section():
-    updates = {'SUBJECT_ID': 'TEST'}
+    updates = {'SUBJECT_ID': 'TEST', 'INCREMENT_DATE': False}
     with tempfile.NamedTemporaryFile(suffix='.yaml') as tmpfile:
         update_file = update_deid_profile(DATA_ROOT/'example4-deid-profile-jinja.yaml',
                                           updates,
                                           dest_path=tmpfile.name)
         with open(update_file, 'r') as fid:
             template = yaml.load(fid, Loader=yaml.SafeLoader)
-            assert template['dicom']['filenames'][0]['groups'][0]['replace-with'] == 'TEST'
+            assert template['dicom']['filenames'][0]['output'] == 'TEST.dcm'
+            assert template['dicom']['filenames'][1]['output'] == 'TEST_{reg_date}.dcm'
+            assert template['dicom']['filenames'][1]['groups'][0]['increment-date'] is False
