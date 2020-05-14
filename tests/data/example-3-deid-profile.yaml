@@ -1,71 +1,68 @@
 dicom:
-  filenames:
-    - output: '{Modality}_{SOPInstanceUID}.dcm'
-      input-regex: '.*.dcm.*'
   fields:
-    - name: PatientID
-      replace-with: 'FLYWHEEL'
-
-zip:
+  - name: PatientID
+    replace-with: FLYWHEEL
   filenames:
-    - output: '{SeriesDescription}_{SeriesNumber}.dcm.zip'
-      input-regex: '^.*\.zip$'
-  hash-subdirectories: true
-  fields:
-    - name: comment
-      replace-with: 'FLYWHEEL'
-
+  - input-regex: .*.dcm.*
+    output: '{Modality}_{SOPInstanceUID}.dcm'
 jpg:
-  filenames:
-    - output: '{name_value}.jpg'
-      input-regex: '(?P<name_value>.*)\.jpg$'
   date-increment: -17
-  remove-gps: True
   fields:
-  - name: DateTime
-    increment-datetime: true
+  - increment-datetime: true
+    name: DateTime
   - name: Artist
     remove: true
-  - name: DateTimeOriginal
-    increment-datetime: true
-  - name: DateTimeDigitized
-    increment-datetime: true
+  - increment-datetime: true
+    name: DateTimeOriginal
+  - increment-datetime: true
+    name: DateTimeDigitized
   - name: CameraOwnerName
-    replace-with: 'REDACTED'
-
+    replace-with: REDACTED
+  filenames:
+  - input-regex: (?P<name_value>.*)\.jpg$
+    output: '{name_value}.jpg'
+  remove-gps: true
+only-config-profiles: true
 png:
-  filenames:
-    - output: '{name_value}.png'
-      input-regex: '(?P<name_value>.*)\.png'
-  remove-private-chunks: True
   fields:
-    - name: tEXt
-      remove: true
-    - name: eXIf
-      remove: true
-
+  - name: tEXt
+    remove: true
+  - name: eXIf
+    remove: true
+  filenames:
+  - input-regex: (?P<name_value>.*)\.png
+    output: '{name_value}.png'
+  remove-private-chunks: true
 tiff:
-  filenames:
-    - output: '{DateTime}_{name_value}.tiff'
-      input-regex: '(?P<name_value>.*)\.tiff'
   date-increment: -17
-  remove-private-tags: True
   fields:
-    - name: DateTime
-      increment-datetime: true
-    - name: Software
-      remove: true
-    - name: Model
-      replace-with: 'REDACTED'
-
+  - increment-datetime: true
+    name: DateTime
+  - name: Software
+    remove: true
+  - name: Model
+    replace-with: REDACTED
+  filenames:
+  - input-regex: (?P<name_value>.*)\.tiff
+    output: '{DateTime}_{name_value}.tiff'
+  remove-private-tags: true
 xml:
   date-increment: -17
   fields:
-    - name: /Patient/Patient_Date_Of_Birth
-      replace-with: '1900-01-01'
-    - name: /Patient/Patient_Name
-      remove: true
-    - name: /Patient/SUBJECT_ID
-      hash: true
-    - name: /Patient/Visit/Scan/ScanTime
-      increment-datetime: true
+  - name: /Patient/Patient_Date_Of_Birth
+    replace-with: '1900-01-01'
+  - name: /Patient/Patient_Name
+    remove: true
+  - hash: true
+    name: /Patient/SUBJECT_ID
+  - increment-datetime: true
+    name: /Patient/Visit/Scan/ScanTime
+zip:
+  fields:
+  - name: comment
+    replace-with: FLYWHEEL
+  filenames:
+  - input-regex: ^.*\.zip$
+    output: '{SeriesDescription}_{SeriesNumber}.dcm.zip'
+  hash-subdirectories: true
+  validate-zip-members: true

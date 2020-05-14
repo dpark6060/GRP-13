@@ -1,29 +1,25 @@
 dicom:
-  # date-increment can be any integer value since dicom.date-increment is defined in example-csv-mapping.csv
   date-increment: -10
-  # since example-csv-mapping.csv doesn't define dicom.remove-private-tags, all subjects will have private tags removed
-  remove-private-tags: true
   fields:
-    - name: PatientBirthDate
-      # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
-      remove: true
-    - name: PatientID
-      # replace-with can be any string value since dicom.fields.PatientID.replace-with defined in example-csv-mapping.csv
-      replace-with: FLYWHEEL
+  - name: PatientBirthDate
+    remove: true
+  - name: PatientID
+    replace-with: FLYWHEEL
+  remove-private-tags: true
 export:
   session:
     whitelist:
       info:
-        - cats
+      - cats
       metadata:
-        - operator
-        - weight
+      - operator
+      - weight
   subject:
-    # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
     code: FLYWHEEL
     whitelist:
       info:
-        - cats
+      - cats
       metadata:
-        - sex
-        - strain
+      - sex
+      - strain
+only-config-profiles: true

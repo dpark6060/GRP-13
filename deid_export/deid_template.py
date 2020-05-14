@@ -72,6 +72,9 @@ def update_deid_profile(deid_template_path, updates, dest_path=None):
     if updates:
         with open(load_path, 'r') as fp:
             deid_template_str = fp.read()
+            # remove quote around jinja var to allow for casting infered from dataframe
+            deid_template_str = deid_template_str.replace('"{{', '{{')
+            deid_template_str = deid_template_str.replace('}}"', '}}')
         env = Environment()
         jinja_template = env.from_string(deid_template_str)
         with open(dest_path, 'w') as fp:
@@ -123,21 +126,23 @@ def validate(deid_template_path,
     if required_cols is None:
         required_cols = DEFAULT_REQUIRED_COLUMNS
 
-    with open(deid_template_path, 'r') as fid:
-        deid_template = load(fid, Loader=Loader)
     df = pd.read_csv(csv_path, dtype=str)
 
-    # Get jinja variables (e.g. defined as {{ stuff }})
+    # Get jinja variables (e.g. defined as {{ arg }})
     with open(deid_template_path, 'r') as fid:
         deid_template_str = fid.read()
     jinja_vars = re.findall(r'{{.*}}', deid_template_str)
     jinja_vars = [v.strip('{} ') for v in jinja_vars]
     required_cols += jinja_vars
+    required_cols = set(required_cols)
 
     # Check for uniqueness of subject columns
     if subject_label_col in df:
         if not df[subject_label_col].is_unique:
             raise ValueError(f'{subject_label_col} is not unique in csv')
+
+    with open(deid_template_path, 'r') as fid:
+        deid_template = load(fid, Loader=Loader)
     new_subject_col = Dotty(deid_template).get(new_subject_label_loc, '').strip('{} ')
     if new_subject_col in df:
         if not df[new_subject_col].is_unique:
@@ -146,6 +151,10 @@ def validate(deid_template_path,
     for c in required_cols:
         if c not in df:
             raise ValueError(f'columns {c} is missing from dataframe')
+
+    for c in df:
+        if c not in required_cols:
+            logger.warning(f'Column `{c}` not found in DeID template')
 
     return df
 
@@ -212,15 +221,13 @@ def process_csv(csv_path, deid_template_path, subject_code_col=DEFAULT_SUBJECT_C
 
     validate(deid_template_path, csv_path)
 
-    with open(deid_template_path, 'r') as fid:
-        deid_template = load(fid, Loader=Loader)
-
     df = pd.read_csv(csv_path, dtype=str)
 
     deids_paths = {}
     for subject_code in df[subject_code_col]:
         dest_template_path = Path(output_dir) / f'{subject_code}.yml'
-        deids_paths[subject_code] = get_updated_template(df, deid_template,
+        deids_paths[subject_code] = get_updated_template(df,
+                                                         deid_template_path,
                                                          subject_code=subject_code,
                                                          subject_code_col=subject_code_col,
                                                          dest_template_path=dest_template_path)
