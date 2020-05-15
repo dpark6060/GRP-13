@@ -370,6 +370,8 @@ class FileExporter:
                     self.log.debug(
                         f'deleting {self.filename} on {self.dest_parent.container_type} {self.dest_parent.id}'
                     )
+                    # updating file type before deletion to avoid gear rule not being triggered
+                    self.dest_parent.update_file(self.filename, {'type': 'tmp-type'})
                     self.dest_parent.delete_file(self.filename)
 
                 self.dest_parent.upload_file(self.deid_path)
