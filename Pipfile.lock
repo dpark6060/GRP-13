@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2071942402d07302855cee407b4df31fbe1b250c7a6868cc01853a4ce5718f33"
+            "sha256": "4dcbc22e29070d36a3f9cc30e3551cf37f7e5f591b02c773eab91e3d038f9507"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -46,7 +46,8 @@
         },
         "flywheel-migration": {
             "editable": true,
-            "path": "/Users/nicolaspannetier/code/gitlab/public/migration-toolkit"
+            "git": "https://gitlab.com/flywheel-io/public/migration-toolkit.git",
+            "ref": "e06cdf468a85a6221a942ed064bd651d2ae7696a"
         },
         "flywheel-sdk": {
             "hashes": [
