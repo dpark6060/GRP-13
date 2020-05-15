@@ -513,37 +513,42 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
     error_count = 0
     # template_obj = load_template_dict(template_path)
 
-    if subject_csv_path and template_obj:
+    if subject_csv_path and template_path:
         df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
                                     subject_label_col=old_code_col,
                                     new_subject_label_loc=new_code_loc)
 
     def _export_session(session_id, session_template_path, project_files=False,
                         subject_files=False, sess_error_msg=None):
-        template_dict = load_template_dict(session_template_path)
 
-        if sess_error_msg:
-            sess_deid_profile, exp_dict = deid_template.load_deid_profile(template_dict)
-            session_obj = fw_client.get_session(session_id)
-            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
-                                              deid_profile=sess_deid_profile)
-        else:
-            session_df = export_session(
-                fw_client=fw_client,
-                origin_session_id=session_id,
-                dest_proj_id=dest_proj_id,
-                template_path=session_template_path,
-                subject_files=subject_files,
-                project_files=project_files,
-                csv_output_path=None,
-                overwrite=overwrite)
-        df_count = session_df['state'].value_counts().get('error', 0)
+        # if not, session template could not be generated no need to dig into the individual files
+        df_count = 0
+        if session_template_path:
 
-        if isinstance(session_df, pd.DataFrame):
-            if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                session_df.to_csv(csv_output_path, index=False)
-            elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
+            template_dict = load_template_dict(session_template_path)
+
+            if sess_error_msg:
+                sess_deid_profile, exp_dict = deid_template.load_deid_profile(template_dict)
+                session_obj = fw_client.get_session(session_id)
+                session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
+                                                  deid_profile=sess_deid_profile)
+            else:
+                session_df = export_session(
+                    fw_client=fw_client,
+                    origin_session_id=session_id,
+                    dest_proj_id=dest_proj_id,
+                    template_path=session_template_path,
+                    subject_files=subject_files,
+                    project_files=project_files,
+                    csv_output_path=None,
+                    overwrite=overwrite)
+            df_count = session_df['state'].value_counts().get('error', 0)
+
+            if isinstance(session_df, pd.DataFrame):
+                if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                    session_df.to_csv(csv_output_path, index=False)
+                elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                    session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
         return df_count
 
     def _get_subject_template(subject_obj, directory_path):
@@ -556,8 +561,13 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                 subject_code_col=old_code_col,
                 dest_template_path=subj_template_path)
             error_msg = None
+        except ValueError as e:
+            error_msg = f'Could not create subject template for {subject.code}: {e}'
+            subj_template_path = None
+            log.info(error_msg)
         except Exception as e:
-            error_msg = f'An exception occured when creating subject template for {subject.code}: {e}'
+            error_msg = f'An exception occurred when creating subject template for {subject.code}: {e}'
+            subj_template_path = None
             log.error(error_msg, exc_info=True)
         return subj_template_path, error_msg
 
