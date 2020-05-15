@@ -15,7 +15,7 @@ export:
       - operator
       - weight
   subject:
-    code: FLYWHEEL
+    label: FLYWHEEL
     whitelist:
       info:
       - cats

@@ -105,7 +105,7 @@ def validate(deid_template_path,
     Checks that:
 
     * df contains some required columns
-    * the subject code columns have unique values
+    * the subject label columns have unique values
 
     Logs warning if:
     *  columns of dataframe does not match deid profile template
@@ -113,7 +113,7 @@ def validate(deid_template_path,
     Args:
         deid_template_path (Path-like): Path to Deid template .yml profile
         csv_path (Path-like): Path to csv file
-        subject_label_col (str): Subject code column name
+        subject_label_col (str): Subject label column name
         new_subject_label_loc (str): New subject location in template (dotty dict notation)
         required_cols (list): List of column name required
 
@@ -179,26 +179,26 @@ def load_deid_profile(template_dict):
 
 def get_updated_template(df,
                          deid_template_path,
-                         subject_code=None,
-                         subject_code_col=DEFAULT_SUBJECT_CODE_COL,
+                         subject_label=None,
+                         subject_label_col=DEFAULT_SUBJECT_CODE_COL,
                          dest_template_path=None):
     """Return path to updated DeID profile
 
     Args:
         df (pandas.DataFrame): Dataframe representation of some mapping info
-        subject_code (str): value matching subject_code_col in row used to update the template
+        subject_label (str): value matching subject_label_col in row used to update the template
         deid_template_path (path-like): Path to a deid template
-        subject_code_col (str): Subject code column name
+        subject_label_col (str): Subject label column name
         dest_template_path (Path-like): Path to output DeID profile
 
     Returns:
         (str): Path to output DeID profile
     """
 
-    series = df[df[subject_code_col] == subject_code].squeeze()
-    series.pop(subject_code_col)
+    series = df[df[subject_label_col] == subject_label].squeeze()
+    series.pop(subject_label_col)
     if series.empty:
-        raise ValueError(f'{subject_code} not found in csv')
+        raise ValueError(f'{subject_label} not found in csv')
     else:
         if dest_template_path is None:
             dest_template_path = tempfile.NamedTemporaryFile().name
@@ -207,17 +207,17 @@ def get_updated_template(df,
     return dest_template_path
 
 
-def process_csv(csv_path, deid_template_path, subject_code_col=DEFAULT_SUBJECT_CODE_COL, output_dir='/tmp'):
+def process_csv(csv_path, deid_template_path, subject_label_col=DEFAULT_SUBJECT_CODE_COL, output_dir='/tmp'):
     """Generate patient specific deid profile
 
     Args:
         csv_path (Path-like): Path to CSV file
         deid_template_path (Path-like): Path to the deid profile template
         output_dir (Path-like): Path to ouptut dir where yml are saved
-        subject_code_col (str): Subject code column name
+        subject_label_col (str): Subject label column name
 
     Returns:
-        dict: Dictionary with key/value = subject.code/path to updated deid profile
+        dict: Dictionary with key/value = subject.label/path to updated deid profile
     """
 
     validate(deid_template_path, csv_path)
@@ -225,12 +225,12 @@ def process_csv(csv_path, deid_template_path, subject_code_col=DEFAULT_SUBJECT_C
     df = pd.read_csv(csv_path, dtype=str)
 
     deids_paths = {}
-    for subject_code in df[subject_code_col]:
-        dest_template_path = Path(output_dir) / f'{subject_code}.yml'
-        deids_paths[subject_code] = get_updated_template(df,
+    for subject_label in df[subject_label_col]:
+        dest_template_path = Path(output_dir) / f'{subject_label}.yml'
+        deids_paths[subject_label] = get_updated_template(df,
                                                          deid_template_path,
-                                                         subject_code=subject_code,
-                                                         subject_code_col=subject_code_col,
+                                                         subject_label=subject_label,
+                                                         subject_label_col=subject_label_col,
                                                          dest_template_path=dest_template_path)
     return deids_paths
 
@@ -240,13 +240,13 @@ if __name__ == '__main__':
     parser.add_argument('csv_path', help='path to the CSV file')
     parser.add_argument('deid_template_path', help='Path to source de-identification profile to modify')
     parser.add_argument('--output_directory', help='path to which to save de-identified template')
-    parser.add_argument('--subject_code_col', help='Name of the column containing subject codes')
+    parser.add_argument('--subject_label_col', help='Name of the column containing subject label')
 
     args = parser.parse_args()
 
     res = process_csv(args.csv_path,
                       args.deid_template_path,
-                      subject_code_col=args.subject_code_col,
+                      subject_label_col=args.subject_label_col,
                       output_dir=args.output_directory)
 
     print(res)

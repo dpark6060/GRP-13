@@ -14,7 +14,6 @@ dicom:
       # remove can be any boolean since dicom.fields.PatientBirthDate.remove is defined in example-csv-mapping.csv
       remove: true
     - name: PatientID
-      # replace-with can be any string value since dicom.fields.PatientID.replace-with defined in example-csv-mapping.csv
       replace-with: FLYWHEEL
 export:
   session:
@@ -25,8 +24,7 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
-    code: FLYWHEEL
+    label: FLYWHEEL
     whitelist:
       info:
         - cats

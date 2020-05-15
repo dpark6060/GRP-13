@@ -30,7 +30,6 @@ export:
         - operator
         - weight
   subject:
-    # code can be any string value since dicom.fields.PatientID.replace-with is defined in example-csv-mapping.csv
     label: "{{ SUBJECT_ID }}"
     whitelist:
       info:

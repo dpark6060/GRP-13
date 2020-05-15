@@ -121,13 +121,13 @@ def quote_numeric_string(input_str):
 
 def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     """
-    Searches the destination project for a subject with code matching origin_subject.code (or 'code' from subject_config
+    Searches the destination project for a subject with label matching origin_subject.label (or 'label' from subject_config
         if provided). If found, the subject metadata is updated to match the whitelisted metadata of origin_subject.
         Otherwise, a new subject is created with metadata matching the whitelisted metadata for origin_subject.
     Args:
         origin_subject (flywheel.Subject): the subject to export
         dest_proj(flywheel.Project): the project in which to search/create the subject
-        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
+        export_config (dict): an optional dictionary specifying metadata whitelists and container labels
 
     Returns:
         (flywheel.Subject): the found or created subject in dest_proj
@@ -137,11 +137,11 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     if not export_config:
         export_config = {'subject': {}}
     subject_config = export_config.get('subject', {})
-    new_code = subject_config.get('code', origin_subject.code)
-    query_code = quote_numeric_string(new_code)
+    new_label = subject_config.get('label', origin_subject.label)
+    query_label = quote_numeric_string(new_label)
 
-    # Since subject code must be unique within a project, we do not need to search by info.export.origin_id
-    dest_subject = dest_proj.subjects.find_first(f'code={query_code}')
+    # Since subject label must be unique within a project, we do not need to search by info.export.origin_id
+    dest_subject = dest_proj.subjects.find_first(f'label={query_label}')
     # Copy over metadata as specified
     meta_dict = get_container_metadata(origin_container=origin_subject, export_dict=export_config)
 
@@ -149,7 +149,7 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
         log.debug(f'Creating destination subject for ({origin_subject.id})')
 
         # Add the subject to the destination project
-        new_subject = dest_proj.add_subject(code=new_code, label=new_code, **meta_dict)
+        new_subject = dest_proj.add_subject(label=new_label, **meta_dict)
 
         # Reload the newly-created container
         dest_subject = new_subject.reload()
@@ -169,7 +169,7 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
     Args:
         origin_session (flywheel.Session): the session to be exported
         dest_subject (flywheel.Subject): the subject to which to export the session
-        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
+        export_config (dict): an optional dictionary specifying metadata whitelists and container labels
 
     Returns:
         (flywheel.Session): the found or created session in dest_subject
@@ -208,7 +208,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     Args:
         origin_acquisition (flywheel.Acquisition): the acquisition to be exported
         dest_session (flywheel.Session): the session to which to export the acquisition
-        export_config (dict): an optional dictionary specifying metadata whitelists and container codes/labels
+        export_config (dict): an optional dictionary specifying metadata whitelists and container labels
 
     Returns:
         (flywheel.Acquisition): the found or created acquisition in dest_session
@@ -504,8 +504,8 @@ def get_session_error_df(fw_client, session_obj, error_msg, deid_profile, projec
 # TODO: incorporate filetype list
 def export_container(fw_client, container_id, dest_proj_id, template_path, csv_output_path=None,
                      overwrite=False, subject_csv_path=None,
-                     new_code_loc=deid_template.DEFAULT_NEW_SUBJECT_LOC,
-                     old_code_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
+                     new_label_loc=deid_template.DEFAULT_NEW_SUBJECT_LOC,
+                     old_label_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
     container = fw_client.get(container_id).reload()
 
     template_obj = None
@@ -515,8 +515,8 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
 
     if subject_csv_path and template_path:
         df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
-                                    subject_label_col=old_code_col,
-                                    new_subject_label_loc=new_code_loc)
+                                    subject_label_col=old_label_col,
+                                    new_subject_label_loc=new_label_loc)
 
     def _export_session(session_id, session_template_path, project_files=False,
                         subject_files=False, sess_error_msg=None):
@@ -528,7 +528,7 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             template_dict = load_template_dict(session_template_path)
 
             if sess_error_msg:
-                sess_deid_profile, exp_dict = deid_template.load_deid_profile(template_dict)
+                sess_deid_profile, _ = deid_template.load_deid_profile(template_dict)
                 session_obj = fw_client.get_session(session_id)
                 session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
                                                   deid_profile=sess_deid_profile)
@@ -557,16 +557,16 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
             subj_template_path = deid_template.get_updated_template(
                 df=df,
                 deid_template_path=template_path,
-                subject_code=subject_obj.code,
-                subject_code_col=old_code_col,
+                subject_label=subject_obj.label,
+                subject_label_col=old_label_col,
                 dest_template_path=subj_template_path)
             error_msg = None
         except ValueError as e:
-            error_msg = f'Could not create subject template for {subject.code}: {e}'
+            error_msg = f'Could not create subject template for {subject.label}: {e}'
             subj_template_path = None
             log.info(error_msg)
         except Exception as e:
-            error_msg = f'An exception occurred when creating subject template for {subject.code}: {e}'
+            error_msg = f'An exception occurred when creating subject template for {subject.label}: {e}'
             subj_template_path = None
             log.error(error_msg, exc_info=True)
         return subj_template_path, error_msg
