@@ -144,7 +144,7 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     dest_subject = dest_proj.subjects.find_first(f'label={query_label}')
     # Copy over metadata as specified
     meta_dict = get_container_metadata(origin_container=origin_subject, export_dict=export_config)
-
+    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
     if not dest_subject:
         log.debug(f'Creating destination subject for ({origin_subject.id})')
 
@@ -187,6 +187,7 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
     dest_session = dest_subject.sessions.find_first(query)
     # Copy over metadata as specified
     meta_dict = get_container_metadata(origin_container=origin_session, export_dict=export_config)
+    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
     if not dest_session:
         log.debug(f'Creating destination session for ({origin_session.id})')
         # Add session to subject
@@ -224,6 +225,7 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     dest_acquisition = dest_session.acquisitions.find_first(query)
     # Copy over metadata as specified
     meta_dict = get_container_metadata(origin_container=origin_acquisition, export_dict=export_config)
+    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
     if not dest_acquisition:
         log.debug(f'Creating destination acquisition for ({origin_acquisition.id})')
 
