@@ -143,8 +143,9 @@ def find_or_create_subject(origin_subject, dest_proj, export_config=None):
     # Since subject label must be unique within a project, we do not need to search by info.export.origin_id
     dest_subject = dest_proj.subjects.find_first(f'label={query_label}')
     # Copy over metadata as specified
-    meta_dict = get_container_metadata(origin_container=origin_subject, export_dict=export_config)
-    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
+    meta_dict = get_container_metadata(origin_container=origin_subject,
+                                       export_dict=export_config,
+                                       drop_none=True)
     if not dest_subject:
         log.debug(f'Creating destination subject for ({origin_subject.id})')
 
@@ -186,8 +187,9 @@ def find_or_create_subject_session(origin_session, dest_subject, export_config=N
     )
     dest_session = dest_subject.sessions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = get_container_metadata(origin_container=origin_session, export_dict=export_config)
-    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
+    meta_dict = get_container_metadata(origin_container=origin_session,
+                                       export_dict=export_config,
+                                       drop_none=True)
     if not dest_session:
         log.debug(f'Creating destination session for ({origin_session.id})')
         # Add session to subject
@@ -224,8 +226,9 @@ def find_or_create_session_acquisition(origin_acquisition, dest_session, export_
     )
     dest_acquisition = dest_session.acquisitions.find_first(query)
     # Copy over metadata as specified
-    meta_dict = get_container_metadata(origin_container=origin_acquisition, export_dict=export_config)
-    meta_dict = {k: v for k, v in meta_dict.items() if v is not None}
+    meta_dict = get_container_metadata(origin_container=origin_acquisition,
+                                       export_dict=export_config,
+                                       drop_none=True)
     if not dest_acquisition:
         log.debug(f'Creating destination acquisition for ({origin_acquisition.id})')
 
@@ -510,10 +513,8 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                      old_label_col=deid_template.DEFAULT_SUBJECT_CODE_COL):
     container = fw_client.get(container_id).reload()
 
-    template_obj = None
     df = None
     error_count = 0
-    # template_obj = load_template_dict(template_path)
 
     if subject_csv_path and template_path:
         df = deid_template.validate(deid_template_path=template_path, csv_path=subject_csv_path,
