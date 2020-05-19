@@ -521,37 +521,34 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                                     subject_label_col=old_label_col,
                                     new_subject_label_loc=new_label_loc)
 
-    def _export_session(session_id, session_template_path, project_files=False,
+    def _export_session(session_id, session_template_path=None, project_files=False,
                         subject_files=False, sess_error_msg=None):
 
-        df_count = 0
-        # Only process is a session_template_path is provided
-        if session_template_path:
+        template_dict = load_template_dict(session_template_path)
 
-            template_dict = load_template_dict(session_template_path)
+        if sess_error_msg:
+            sess_deid_profile, _ = deid_template.load_deid_profile(template_dict)
+            session_obj = fw_client.get_session(session_id)
+            session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
+                                              deid_profile=sess_deid_profile)
+        else:
+            session_df = export_session(
+                fw_client=fw_client,
+                origin_session_id=session_id,
+                dest_proj_id=dest_proj_id,
+                template_path=session_template_path,
+                subject_files=subject_files,
+                project_files=project_files,
+                csv_output_path=None,
+                overwrite=overwrite)
+        df_count = session_df['state'].value_counts().get('error', 0)
 
-            if sess_error_msg:
-                sess_deid_profile, _ = deid_template.load_deid_profile(template_dict)
-                session_obj = fw_client.get_session(session_id)
-                session_df = get_session_error_df(fw_client=fw_client, session_obj=session_obj, error_msg=sess_error_msg,
-                                                  deid_profile=sess_deid_profile)
-            else:
-                session_df = export_session(
-                    fw_client=fw_client,
-                    origin_session_id=session_id,
-                    dest_proj_id=dest_proj_id,
-                    template_path=session_template_path,
-                    subject_files=subject_files,
-                    project_files=project_files,
-                    csv_output_path=None,
-                    overwrite=overwrite)
-            df_count = session_df['state'].value_counts().get('error', 0)
+        if isinstance(session_df, pd.DataFrame):
+            if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                session_df.to_csv(csv_output_path, index=False)
+            elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
+                session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
 
-            if isinstance(session_df, pd.DataFrame):
-                if csv_output_path and not os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                    session_df.to_csv(csv_output_path, index=False)
-                elif csv_output_path and os.path.isfile(csv_output_path) and (len(session_df) >= 1):
-                    session_df.to_csv(csv_output_path, mode='a', header=False, index=False)
         return df_count
 
     def _get_subject_template(subject_obj, directory_path):
@@ -583,13 +580,18 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
                 subj_template_path, subj_error_msg = _get_subject_template(subject_obj=subject_obj,
                                                                            directory_path=temp_dir)
             subject_files = True
-            for session in subject_obj.sessions():
-                sess_count = _export_session(session_id=session.id, session_template_path=subj_template_path,
-                                             project_files=project_files, subject_files=subject_files,
-                                             sess_error_msg=subj_error_msg)
-                subject_error_count += sess_count
-                subject_files = False
-                project_files = False
+            # Only process if subj_template_path is provided
+            if subj_template_path:
+                for session in subject_obj.sessions():
+                    sess_count = _export_session(session_id=session.id,
+                                                 session_template_path=subj_template_path,
+                                                 project_files=project_files,
+                                                 subject_files=subject_files,
+                                                 sess_error_msg=subj_error_msg)
+                    subject_error_count += sess_count
+                    subject_files = False
+                    project_files = False
+
         return subject_error_count
 
     if container.container_type not in ['subject', 'project', 'session']:
