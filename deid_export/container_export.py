@@ -524,8 +524,8 @@ def export_container(fw_client, container_id, dest_proj_id, template_path, csv_o
     def _export_session(session_id, session_template_path, project_files=False,
                         subject_files=False, sess_error_msg=None):
 
-        # if not, session template could not be generated no need to dig into the individual files
         df_count = 0
+        # Only process is a session_template_path is provided
         if session_template_path:
 
             template_dict = load_template_dict(session_template_path)
