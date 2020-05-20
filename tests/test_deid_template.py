@@ -20,7 +20,7 @@ def test_can_update_deid_dicom_profile():
         }
 
         update_deid_profile(DATA_ROOT/'example4-deid-profile-jinja.yaml',
-                            replace_with,
+                            updates=replace_with,
                             dest_path=tmpfile.name)
 
         with open(tmpfile.name, 'r') as fid:
@@ -87,7 +87,7 @@ def test_can_update_deid_dicom_profile_filename_section():
     updates = {'SUBJECT_ID': 'TEST', 'INCREMENT_DATE': False}
     with tempfile.NamedTemporaryFile(suffix='.yaml') as tmpfile:
         update_file = update_deid_profile(DATA_ROOT/'example4-deid-profile-jinja.yaml',
-                                          updates,
+                                          updates=updates,
                                           dest_path=tmpfile.name)
         with open(update_file, 'r') as fid:
             template = yaml.load(fid, Loader=yaml.SafeLoader)

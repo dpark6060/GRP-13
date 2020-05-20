@@ -57,7 +57,7 @@ def _add_zip_member_validation(deid_template):
     return deid_template
 
 
-def update_deid_profile(deid_template_path, updates, dest_path=None):
+def update_deid_profile(deid_template_path, updates=None, dest_path=None):
     """Return the updated deid profile
 
     Args:
@@ -202,7 +202,7 @@ def get_updated_template(df,
     else:
         if dest_template_path is None:
             dest_template_path = tempfile.NamedTemporaryFile().name
-        update_deid_profile(deid_template_path, series.to_dict(), dest_path=dest_template_path)
+        update_deid_profile(deid_template_path, updates=series.to_dict(), dest_path=dest_template_path)
 
     return dest_template_path
 

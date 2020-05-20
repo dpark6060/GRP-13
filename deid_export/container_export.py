@@ -71,7 +71,7 @@ def load_template_dict(template_file_path):
                 template = json.load(f)
         elif ext in ['.yml', '.yaml']:
             deid_template.update_deid_profile(template_file_path,
-                                              dict(),
+                                              updates=dict(),
                                               dest_path=template_file_path)
             with open(template_file_path, 'r') as f:
                 template = yaml.load(f, Loader=yaml.FullLoader)
