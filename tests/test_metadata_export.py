@@ -23,7 +23,7 @@ def test_export_config_to_whitelist():
     export_config = {'whitelist': expected_output}
     output = export_config_to_whitelist(export_config)
     assert output == expected_output
-    export_config = {'code': 'FLYWHEEL'}
+    export_config = {'label': 'FLYWHEEL'}
     output = export_config_to_whitelist(export_config)
     assert output == []
 

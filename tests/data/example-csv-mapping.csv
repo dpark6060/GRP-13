@@ -1,4 +1,4 @@
-subject.code,dicom.date-increment,dicom.fields.PatientID.replace-with,dicom.fields.PatientBirthDate.remove
+subject.label,DATE_INCREMENT,SUBJECT_ID,PATIENT_BD_BOOL
 001,-15,IDA,FALSE
 002,-20,IDB,TRUE
 003,-30,IDC,TRUE

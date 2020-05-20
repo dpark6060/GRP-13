@@ -63,7 +63,7 @@ def filter_metadata_list(container_type, metadata_list, metadata_wl_dict=None):
     return metadata_list
 
 
-def get_container_metadata(origin_container, export_dict):
+def get_container_metadata(origin_container, export_dict, drop_none=False):
     container_type = origin_container.container_type
     container_config = export_dict.get(container_type)
     metadata_dot_dict = dotty_dict.dotty()
@@ -83,4 +83,7 @@ def get_container_metadata(origin_container, export_dict):
     metadata_dot_dict['info.export.origin_id'] = util.hash_value(origin_container_id,
                                                                  salt=project_id)
     output_dict = metadata_dot_dict.to_dict()
+
+    if drop_none:
+        output_dict = {k: v for k, v in output_dict.items() if v is not None}
     return output_dict
