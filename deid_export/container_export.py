@@ -53,9 +53,9 @@ def matches_file(deid_profile, file_obj):
 
 def load_template_dict(template_file_path):
     """
-    Determines whether the file at template_file_path is JSON or YAML and returns the Python dictionary representation
+    Determines whether the file is YAML and returns the Python dictionary representation
     Args:
-        template_file_path (str): path to the JSON or YAML file
+        template_file_path (str): path to the YAML file
     Raises:
         ValueError: when fails to load the template
     Returns:
@@ -66,10 +66,7 @@ def load_template_dict(template_file_path):
 
     template = None
     try:
-        if ext == '.json':
-            with open(template_file_path, 'r') as f:
-                template = json.load(f)
-        elif ext in ['.yml', '.yaml']:
+        if ext in ['.yml', '.yaml']:
             deid_template.update_deid_profile(template_file_path,
                                               updates=dict(),
                                               dest_path=template_file_path)
