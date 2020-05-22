@@ -40,6 +40,10 @@ dicom:
     - name: StudyDate
       increment-date: true
 
+    # Increment a datetime field by -17 days
+    - name: AcquisitionDateTime
+      increment-datetime: true
+
     # One-Way hash a dicom field to a unique string
     - name: AccessionNumber
       hash: true
